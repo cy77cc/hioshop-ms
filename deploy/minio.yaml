@@ -1,0 +1,179 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: minio
+  labels:
+    istio-injection: enabled
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: minio-env
+  namespace: minio
+data:
+  MINIO_ROOT_USER: "root"
+  MINIO_ROOT_PASSWORD: "1qaz@2wsX"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio-hl
+  namespace: minio
+spec:
+  clusterIP: None
+  ports:
+    - name: api
+      port: 9000
+    - name: ui
+      port: 9001
+  selector:
+    app: minio
+---
+# 给gateway api用
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio
+  namespace: minio
+spec:
+  type: ClusterIP
+  ports:
+    - name: api
+      port: 9000
+    - name: ui
+      port: 9001
+  selector:
+    app: minio
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio
+  namespace: minio
+spec:
+  type: NodePort
+  ports:
+    - port: 9000
+      nodePort: 9000
+      name: api
+    - port: 9001
+      nodePort: 9001
+      name: ui
+  selector:
+    app: minio
+---
+#apiVersion: gateway.networking.k8s.io/v1beta1
+#kind: Gateway
+#metadata:
+#  name: minio-gateway
+#  namespace: minio
+#spec:
+#  gatewayClassName: istio
+#  listeners:
+#    - name: http-minio-api
+#      protocol: HTTP
+#      port: 9000
+#      allowedRoutes:
+#        namespaces:
+#          from: Same
+#    - name: http-minio-console
+#      protocol: HTTP
+#      port: 9001
+#      allowedRoutes:
+#        namespaces:
+#          from: Same
+#
+#---
+#apiVersion: gateway.networking.k8s.io/v1beta1
+#kind: HTTPRoute
+#metadata:
+#  name: minio-api
+#  namespace: minio
+#spec:
+#  parentRefs:
+#    - name: minio-gateway
+#      sectionName: http-minio-api
+#  hostnames:
+#    - "192.168.66.151"  # 可换成域名 minio.local
+#  rules:
+#    - matches:
+#        - path:
+#            type: PathPrefix
+#            value: "/"  # 匹配所有 API 请求
+#      backendRefs:
+#        - name: minio
+#          port: 9000
+#---
+#apiVersion: gateway.networking.k8s.io/v1beta1
+#kind: HTTPRoute
+#metadata:
+#  name: minio-console
+#  namespace: minio
+#spec:
+#  parentRefs:
+#    - name: minio-gateway
+#      sectionName: http-minio-console
+#  hostnames:
+#    - "192.168.66.151"  # 可换成域名 minio.local
+#  rules:
+#    - matches:
+#        - path:
+#            type: PathPrefix
+#            value: "/"   # 匹配 Console 根路径
+#      backendRefs:
+#        - name: minio
+#          port: 9001
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: minio
+  namespace: minio
+spec:
+  serviceName: minio-hl
+  podManagementPolicy: "Parallel"
+  replicas: 3
+  selector:
+    matchLabels:
+      app: minio
+  template:
+    metadata:
+      labels:
+        app: minio
+    spec:
+      containers:
+        - name: minio
+          image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+          ports:
+            - name: export
+              containerPort: 9000
+          envFrom:
+            - configMapRef:
+                name: minio-env
+          volumeMounts:
+            - name: time
+              mountPath: /etc/localtime
+              readOnly: true
+            - name: export
+              mountPath: /export
+          args: [ "server", "http://minio-{0...2}.minio-hl/export", "--console-address", ":9001", "--address", ":9000" ]
+          livenessProbe:
+            httpGet:
+              path: /minio/health/live
+              port: 9000
+      volumes:
+        - name: time
+          hostPath:
+            path: /etc/localtime
+            type: File
+        - name: export
+          hostPath:
+            path: /data/minio/export
+            type: DirectoryOrCreate
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchLabels:
+                  app: minio

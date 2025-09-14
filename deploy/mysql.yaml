@@ -1,0 +1,243 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mysql
+  labels:
+    istio-injection: enabled
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql-cm
+  namespace: mysql
+data:
+  master_init.sh: |
+    #!/bin/bash
+    set -e
+    MYSQL_ROOT_PASSWORD=1qaz@2wsX
+    REPL_USER=repl
+    REPL_PASSWORD=1qaz@2wsX
+    
+    until mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "SELECT 1;" &>/dev/null; do
+      echo "Waiting for master..."
+      sleep 3
+    done
+    
+    mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "create user '$REPL_USER'@'%' identified by '$REPL_PASSWORD';"
+    mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "grant replication slave on *.* to '$REPL_USER'@'%';"
+    
+    # 如果创建用户失败，退出
+    if ! mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "select * from mysql.user where User='repl';"; then
+      exit 1
+    fi
+    # 检查用户权限是不是成功了
+    if ! mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "show grants for repl@'%';"; then
+      exit 1
+    fi
+    
+    mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "flush privileges;"
+    
+
+  slave_init.sh: |
+    #!/bin/bash
+    set -e
+    
+    MASTER_HOST=mysql-master-0.mysql-master-hl
+    MYSQL_ROOT_PASSWORD=1qaz@2wsX
+    REPL_USER=repl
+    REPL_PASSWORD=1qaz@2wsX
+    
+    # 等待 Master 启动
+    until mysql -h "$MASTER_HOST" -uroot -p"$MYSQL_ROOT_PASSWORD" -e "SELECT 1;" &>/dev/null; do
+      echo "Waiting for master..."
+      sleep 3
+    done
+    
+    # 获取 Master 状态
+    #MASTER_STATUS=$(mysql -h "$MASTER_HOST" -uroot -p"$MYSQL_ROOT_PASSWORD" -e "SHOW REPLICA STATUS\G")
+    #LOG_FILE=$(echo "$MASTER_STATUS" | grep File | awk '{print $2}')
+    #LOG_POS=$(echo "$MASTER_STATUS" | grep Position | awk '{print $2}')
+    
+    # 配置 Slave
+    mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "
+    CHANGE REPLICATION SOURCE TO SOURCE_HOST='$MASTER_HOST', SOURCE_USER='$REPL_USER', SOURCE_PASSWORD='$REPL_PASSWORD', 
+                   SOURCE_PORT=3306, SOURCE_LOG_FILE='mysql-bin.000002', SOURCE_LOG_POS=158, SOURCE_SSL=1;
+    START REPLICA;
+    "
+
+  my.cnf: |
+    [mysqld]
+    server-id=1
+    log-bin=mysql-bin
+    binlog-format=ROW
+    relay-log=mysql-relay-bin
+    sync_binlog=1
+    skip-name-resolve
+  slave.cnf: |
+    [mysqld]
+    server-id=2
+    log-bin=mysql-bin
+    binlog-format=ROW
+    relay-log=mysql-relay-bin
+    sync_binlog=1
+    skip-name-resolve
+    read_only= 1
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-master-hl
+  namespace: mysql
+spec:
+  ports:
+    - port: 3306
+      targetPort: 3306
+  clusterIP: None
+  selector:
+    app: mysql-master
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-slave-hl
+  namespace: mysql
+spec:
+  ports:
+    - port: 3306
+      targetPort: 3306
+  clusterIP: None
+  selector:
+    app: mysql-slave
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-master
+  namespace: mysql
+spec:
+  ports:
+    - port: 3306
+      targetPort: 3306
+      nodePort: 3306
+  type: NodePort
+  selector:
+    app: mysql-master
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-slave
+  namespace: mysql
+spec:
+  ports:
+    - port: 3306
+      targetPort: 3306
+      nodePort: 3307
+  type: NodePort
+  selector:
+    app: mysql-slave
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mysql-master
+  namespace: mysql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql-master
+  serviceName: mysql-master-hl
+  template:
+    metadata:
+      labels:
+        app: mysql-master
+    spec:
+      containers:
+        - name: mysql-master
+          image: mysql:8.4.6
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+            - mountPath: /var/lib/mysql
+              name: data
+            - mountPath: /docker-entrypoint-initdb.d/master_init.sh
+              name: init
+              subPath: master_init.sh
+            - mountPath: /etc/mysql/my.cnf
+              name: init
+              subPath: my.cnf
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: "1qaz@2wsX"
+      volumes:
+        - name: data
+          hostPath:
+            path: /data/mysql/data
+            type: DirectoryOrCreate
+        - name: init
+          configMap:
+            name: mysql-cm
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: role
+                    operator: In
+                    values:
+                      - master
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mysql-slave
+  namespace: mysql
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: mysql-slave
+  serviceName: mysql-slave-hl
+  template:
+    metadata:
+      labels:
+        app: mysql-slave
+    spec:
+      containers:
+        - name: mysql-slave
+          image: mysql:8.4.6
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+            - mountPath: /var/lib/mysql
+              name: data
+            - mountPath: /docker-entrypoint-initdb.d/slave_init.sh
+              name: init
+              subPath: slave_init.sh
+            - mountPath: /etc/mysql/my.cnf
+              name: init
+              subPath: slave.cnf
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: "1qaz@2wsX"
+      volumes:
+        - name: data
+          hostPath:
+            path: /data/mysql/data
+            type: DirectoryOrCreate
+        - name: init
+          configMap:
+            name: mysql-cm
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: role
+                    operator: In
+                    values:
+                      - slave
+

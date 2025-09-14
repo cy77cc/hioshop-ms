@@ -1,0 +1,450 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: redis
+  labels:
+    istio-injection: enabled
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-config-env
+  namespace: redis
+data:
+  REDIS_NODES: "redis-0.redis-hl,redis-1.redis-hl,redis-2.redis-hl"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-config
+  namespace: redis
+data:
+  redis.conf: |
+    requirepass 1qaz@2wsX
+    bind 0.0.0.0
+    daemonize no
+    pidfile "/var/redis-server.pid"
+    port 6379
+    tcp-backlog 128
+    timeout 0
+    tcp-keepalive 0
+    loglevel notice
+    logfile "/var/redis-server.log"
+    databases 16
+    save 900 1
+    save 300 10
+    save 60 10000
+    stop-writes-on-bgsave-error yes
+    rdbcompression yes
+    rdbchecksum yes
+    dbfilename dump.rdb
+    dir "/data"
+    slave-serve-stale-data yes
+    slave-read-only yes
+    repl-diskless-sync no
+    repl-diskless-sync-delay 5
+    repl-disable-tcp-nodelay no
+    slave-priority 100
+    appendonly yes
+    appendfilename "appendonly.aof"
+    appendfsync everysec
+    no-appendfsync-on-rewrite no
+    auto-aof-rewrite-percentage 100
+    auto-aof-rewrite-min-size 64mb
+    aof-load-truncated yes
+    lua-time-limit 5000
+    slowlog-log-slower-than 10000
+    slowlog-max-len 128
+    latency-monitor-threshold 0
+    notify-keyspace-events ""
+    hash-max-ziplist-entries 512
+    hash-max-ziplist-value 64
+    list-max-ziplist-entries 512
+    list-max-ziplist-value 64
+    set-max-intset-entries 512
+    zset-max-ziplist-entries 128
+    zset-max-ziplist-value 64
+    hll-sparse-max-bytes 3000
+    activerehashing yes
+    client-output-buffer-limit normal 0 0 0
+    client-output-buffer-limit slave 256mb 64mb 60
+    client-output-buffer-limit pubsub 32mb 8mb 60
+    hz 10
+    aof-rewrite-incremental-fsync yes
+    masterauth 1qaz@2wsX
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-scripts
+  namespace: redis
+data:
+  sentinel_init.sh: |
+    #!/bin/bash
+    set -ex
+    until [ "$(timeout 5 redis-cli -h redis-hl -a 1qaz@2wsX -p 6379 ping)" = "PONG" ]; do
+      echo "等待 redis 集群启动"
+      sleep 1
+    done
+    ### 遍历所有 redis 节点，看 master 是哪个
+    for i in ${REDIS_NODES//,/ }
+    do
+        echo "finding master at $i"
+        MASTER_HOST=$(redis-cli --no-auth-warning --raw -h $i -a 1qaz@2wsX info replication | awk '{print $1}' | grep master_host: | cut -d ":" -f2)
+        MASTER_PORT=$(redis-cli --no-auth-warning --raw -h $i -a 1qaz@2wsX info replication | awk '{print $1}' | grep master_port: | cut -d ":" -f2)
+
+        if [ "${MASTER_HOST}" = "" ]; then
+            echo "no master found"
+            MASTER_HOST=
+        else
+            echo "found ${MASTER_HOST}"
+            break
+        fi
+    done
+
+    MASTER_HOST=$(echo "$MASTER_HOST" | tr -d '\r\n')
+    MASTER_PORT=$(echo "$MASTER_PORT" | tr -d '\r\n')
+    cat <<EOF >/conf/sentinel.conf
+    port 16379
+    sentinel resolve-hostnames yes
+    sentinel announce-hostnames yes
+    sentinel monitor mymaster ${MASTER_HOST} ${MASTER_PORT} 2
+    sentinel down-after-milliseconds mymaster 1000
+    sentinel failover-timeout mymaster 10000
+    sentinel parallel-syncs mymaster 1
+    sentinel auth-pass mymaster 1qaz@2wsX
+    sentinel announce-ip ${NODE_IP}
+    sentinel announce-port 16379
+    EOF
+
+  redis_init.sh: |
+    #!/bin/bash
+    set -ex
+    cp /tmp/redis/redis.conf /conf/redis.conf
+    if [ "${HOSTNAME: -1}" = "0" ]; then
+      echo "replica-announce-ip ${NODE_IP}" >> /conf/redis.conf
+      echo "replica-announce-port 30040 " >> /conf/redis.conf
+    elif [ "${HOSTNAME: -1}" = "1" ]; then
+      echo "replica-announce-ip ${NODE_IP}" >> /conf/redis.conf
+      echo "replica-announce-port 30041 " >> /conf/redis.conf
+    else
+      echo "replica-announce-ip ${NODE_IP}" >> /conf/redis.conf
+      echo "replica-announce-port 30042 " >> /conf/redis.conf
+    fi
+
+    echo "finding master..."
+
+    ### 如果 PING 没有响应，说明是第一次初始化
+    if [ "$(timeout 5 redis-cli -h redis-sentinel-hl -p 16379 ping)" != "PONG" ]; then
+
+      echo "sentinel not found, defaulting to redis-0"
+
+      if [ "${HOSTNAME: -1}" = "0" ]; then
+        echo "this is redis-0, not updating config..."
+      else
+        echo "updating redis.conf..."
+        echo "repl-ping-replica-period 3" >> /conf/redis.conf
+        echo "slave-read-only no" >> /conf/redis.conf
+        echo "slaveof ${NODE_IP} 30040" >> /conf/redis.conf
+      fi
+    ### 哨兵已经启动，pod 是新加入的，需要从哨兵获取当前 master 的信息
+    else
+      sleep 5
+      echo "sentinel found, finding master"
+      MASTER_HOST="$(redis-cli -h redis-sentinel-hl -p 16379 sentinel get-master-addr-by-name mymaster | sed -n 1p)"
+      MASTER_PORT="$(redis-cli -h redis-sentinel-hl -p 16379 sentinel get-master-addr-by-name mymaster | sed -n 2p)"
+      MASTER_HOST=$(echo "$MASTER_HOST" | tr -d '\r\n')
+      MASTER_PORT=$(echo "$MASTER_PORT" | tr -d '\r\n')
+      if [ "${HOSTNAME: -1}" = "${MASTER_PORT: -1}" ]; then
+        echo "this is master, not updating config..."
+      else
+        echo "master found : ${MASTER_HOST}, updating redis.conf"
+        echo "slave-read-only no" >> /conf/redis.conf
+        echo "slaveof ${MASTER_HOST} ${MASTER_PORT}" >> /conf/redis.conf
+        echo "repl-ping-replica-period 3" >> /conf/redis.conf
+      fi
+
+    fi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-hl
+  namespace: redis
+spec:
+  clusterIP: None
+  ports:
+    - name: export
+      port: 6379
+  selector:
+    app: redis
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-sentinel-hl
+  namespace: redis
+spec:
+  clusterIP: None
+  ports:
+    - name: sentinel-export
+      port: 16379
+  selector:
+    app: redis-sentinel
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-0
+  namespace: redis
+spec:
+  type: NodePort
+  selector:
+    app: redis
+    apps.kubernetes.io/pod-index: '0'
+  ports:
+    - port: 6379
+      nodePort: 30040
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-1
+  namespace: redis
+spec:
+  type: NodePort
+  selector:
+    app: redis
+    apps.kubernetes.io/pod-index: '1'
+  ports:
+    - port: 6379
+      nodePort: 30041
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-2
+  namespace: redis
+spec:
+  type: NodePort
+  selector:
+    app: redis
+    apps.kubernetes.io/pod-index: '2'
+  ports:
+    - port: 6379
+      nodePort: 30042
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-sentinel
+  namespace: redis
+spec:
+  ports:
+    - nodePort: 16379
+      port: 16379
+  selector:
+    app: redis-sentinel
+  type: NodePort
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+  namespace: redis
+spec:
+  podManagementPolicy: Parallel
+  replicas: 3
+  selector:
+    matchLabels:
+      app: redis
+  serviceName: redis-hl
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: redis
+              topologyKey: kubernetes.io/hostname
+      initContainers:
+        - name: busybox
+          image: redis:7.4.2
+          command:
+            - bash
+            - /scripts/redis_init.sh
+          volumeMounts:
+            - mountPath: /conf
+              name: config-volume
+            - name: scripts
+              subPath: redis_init.sh
+              mountPath: /scripts/redis_init.sh
+            - name: scripts
+              subPath: tools.sh
+              mountPath: /scripts/tools.sh
+            - mountPath: /tmp/redis/redis.conf
+              name: config
+              subPath: redis.conf
+          env:
+            - name: NODE_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+      containers:
+        - args:
+            - -c
+            - redis-server /conf/redis.conf
+          command:
+            - sh
+          image: redis:7.4.2
+          livenessProbe:
+            tcpSocket:
+              port: 6379
+          name: redis
+          envFrom:
+            - configMapRef:
+                name: redis-config-env
+          ports:
+            - containerPort: 6379
+              name: export
+          startupProbe:
+            failureThreshold: 30
+            periodSeconds: 10
+            tcpSocket:
+              port: 6379
+          volumeMounts:
+            - name: config-volume
+              mountPath: /conf
+            - mountPath: /etc/localtime
+              name: time
+              readOnly: true
+            - mountPath: /data
+              name: data
+            - mountPath: /var
+              name: var
+      volumes:
+        - configMap:
+            name: redis-config
+          name: config
+        - name: scripts
+          configMap:
+            name: redis-scripts
+        - name: time
+          hostPath:
+            path: /etc/localtime
+            type: File
+        - hostPath:
+            path: /data/redis/data
+            type: DirectoryOrCreate
+          name: data
+        - hostPath:
+            path: /data/redis/var
+            type: DirectoryOrCreate
+          name: var
+        - name: config-volume
+          emptyDir: { }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis-sentinel
+  namespace: redis
+spec:
+  podManagementPolicy: Parallel
+  replicas: 3
+  selector:
+    matchLabels:
+      app: redis-sentinel
+  serviceName: redis-sentinel-hl
+  template:
+    metadata:
+      labels:
+        app: redis-sentinel
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: redis-sentinel
+              topologyKey: kubernetes.io/hostname
+      initContainers:
+        - name: busybox
+          image: redis:7.4.2
+          command: [ "bash", "/scripts/sentinel_init.sh" ]
+          env:
+            - name: REDIS_NODES
+              valueFrom:
+                configMapKeyRef:
+                  key: REDIS_NODES
+                  name: redis-config-env
+            - name: NODE_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          volumeMounts:
+            - mountPath: /scripts/sentinel_init.sh
+              name: scripts
+              subPath: sentinel_init.sh
+            - name: scripts
+              subPath: tools.sh
+              mountPath: /scripts/tools.sh
+            - name: config-volume
+              mountPath: /conf
+          securityContext:
+            runAsUser: 0
+      containers:
+        - command:
+            - sh
+            - -c
+            - |
+              redis-sentinel /conf/sentinel.conf
+          image: redis:7.4.2
+          livenessProbe:
+            tcpSocket:
+              port: 16379
+          name: redis-sentinel
+          ports:
+            - containerPort: 16379
+              name: export
+          startupProbe:
+            failureThreshold: 30
+            periodSeconds: 10
+            tcpSocket:
+              port: 16379
+          volumeMounts:
+            - mountPath: /etc/localtime
+              name: time
+              readOnly: true
+            - mountPath: /data
+              name: data
+            - mountPath: /var
+              name: var
+            - name: config-volume
+              mountPath: /conf
+      volumes:
+        - name: scripts
+          configMap:
+            name: redis-scripts
+        - hostPath:
+            path: /etc/localtime
+            type: File
+          name: time
+        - hostPath:
+            path: /data/redis/data
+            type: DirectoryOrCreate
+          name: data
+        - hostPath:
+            path: /data/redis/var
+            type: DirectoryOrCreate
+          name: var
+        - name: config-volume
+          emptyDir: { }

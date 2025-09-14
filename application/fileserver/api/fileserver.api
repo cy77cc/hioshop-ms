@@ -1,0 +1,73 @@
+syntax = "v1"
+
+info(
+    title: "File Service API"
+    desc: "文件服务，提供文件上传、下载、删除、查询等功能"
+    author: "your-name"
+    version: "1.0"
+)
+
+type (
+    // 通用响应
+    Response {
+        code int `json:"code"`
+        msg string `json:"msg"`
+    }
+
+        // 上传文件返回
+    UploadResp {
+        code int `json:"code"`
+        msg string `json:"msg"`
+        fileId string `json:"fileId"`
+        url string `json:"url"`
+    }
+
+        // 文件元数据
+    FileInfo {
+        fileId string `json:"fileId"`
+        fileName string `json:"fileName"`
+        bucket string `json:"bucket"`
+        size int64 `json:"size"`
+        contentType string `json:"contentType"`
+        uploader string `json:"uploader"`
+        uploadTime string `json:"uploadTime"`
+    }
+
+        // 查询文件返回
+    FileResp {
+        code int `json:"code"`
+        msg string `json:"msg"`
+        data FileInfo `json:"data"`
+    }
+
+    FileIDReq {
+        id int `json:"id"`
+    }
+
+    FileListReq {
+        page int `json:"page"`
+        size int `json:"size"`
+    }
+)
+
+service fileserver {
+    @doc "文件上传"
+    @handler UploadFile
+    post /api/file/upload (multipart) returns (UploadResp)
+
+    @doc "文件下载"
+    @handler DownloadFile
+    get /api/file/download/:fileId (FileIDReq) returns (raw)
+
+    @doc "删除文件"
+    @handler DeleteFile
+    delete /api/file/:fileId (FileIDReq) returns (Response)
+
+    @doc "获取文件元数据"
+    @handler getFileInfo
+    get /api/file/:fileId (FileIDReq) returns (FileResp)
+
+    @doc "文件列表（分页）"
+    @handler getFileList
+    get /api/files?page=:page&size=:size (FileListReq) returns (Response)
+}
