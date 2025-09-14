@@ -174,8 +174,10 @@ metadata:
 spec:
   clusterIP: None
   ports:
-    - name: export
+    - name: tcp-redis
+      protocol: TCP
       port: 6379
+  sessionAffinity: None
   selector:
     app: redis
 ---
@@ -187,8 +189,10 @@ metadata:
 spec:
   clusterIP: None
   ports:
-    - name: sentinel-export
+    - name: tcp-sentinel
+      protocol: TCP
       port: 16379
+  sessionAffinity: None
   selector:
     app: redis-sentinel
 ---
@@ -204,7 +208,9 @@ spec:
     apps.kubernetes.io/pod-index: '0'
   ports:
     - port: 6379
+      protocol: TCP
       nodePort: 30040
+      name: tcp-redis
 ---
 apiVersion: v1
 kind: Service
@@ -218,7 +224,9 @@ spec:
     apps.kubernetes.io/pod-index: '1'
   ports:
     - port: 6379
+      protocol: TCP
       nodePort: 30041
+      name: tcp-redis
 ---
 apiVersion: v1
 kind: Service
@@ -232,7 +240,9 @@ spec:
     apps.kubernetes.io/pod-index: '2'
   ports:
     - port: 6379
+      protocol: TCP
       nodePort: 30042
+      name: tcp-redis
 ---
 apiVersion: v1
 kind: Service
@@ -242,7 +252,9 @@ metadata:
 spec:
   ports:
     - nodePort: 16379
+      protocol: TCP
       port: 16379
+      name: tcp-sentinel
   selector:
     app: redis-sentinel
   type: NodePort

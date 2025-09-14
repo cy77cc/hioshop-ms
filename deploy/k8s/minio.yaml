@@ -22,10 +22,13 @@ metadata:
 spec:
   clusterIP: None
   ports:
-    - name: api
+    - name: http-api
+      protocol: TCP
       port: 9000
-    - name: ui
+    - name: http-ui
+      protocol: TCP
       port: 9001
+  sessionAffinity: None
   selector:
     app: minio
 ---
@@ -38,9 +41,11 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-    - name: api
+    - name: http-api
+      protocol: TCP
       port: 9000
-    - name: ui
+    - name: http-ui
+      protocol: TCP
       port: 9001
   selector:
     app: minio
@@ -54,11 +59,13 @@ spec:
   type: NodePort
   ports:
     - port: 9000
+      protocol: TCP
       nodePort: 9000
-      name: api
+      name: http-api
     - port: 9001
+      protocol: TCP
       nodePort: 9001
-      name: ui
+      name: http-ui
   selector:
     app: minio
 ---

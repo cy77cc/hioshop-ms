@@ -92,6 +92,8 @@ spec:
   ports:
     - port: 3306
       targetPort: 3306
+      protocol: TCP
+      name: tcp-mysql
   clusterIP: None
   selector:
     app: mysql-master
@@ -104,7 +106,10 @@ metadata:
 spec:
   ports:
     - port: 3306
+      protocol: TCP
       targetPort: 3306
+      name: tcp-mysql
+  sessionAffinity: None
   clusterIP: None
   selector:
     app: mysql-slave
@@ -117,8 +122,10 @@ metadata:
 spec:
   ports:
     - port: 3306
+      protocol: TCP
       targetPort: 3306
       nodePort: 3306
+      name: tcp-mysql
   type: NodePort
   selector:
     app: mysql-master
@@ -131,8 +138,10 @@ metadata:
 spec:
   ports:
     - port: 3306
+      protocol: TCP
       targetPort: 3306
       nodePort: 3307
+      name: tcp-mysql
   type: NodePort
   selector:
     app: mysql-slave
