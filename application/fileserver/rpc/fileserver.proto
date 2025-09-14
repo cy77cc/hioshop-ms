@@ -1,0 +1,100 @@
+syntax = "proto3";
+
+package file;
+
+option go_package = "./pb";
+
+// 文件服务 RPC
+service FileService {
+  // 上传文件
+  rpc UploadFile(UploadFileRequest) returns (UploadFileResponse);
+
+  // 下载文件
+  rpc DownloadFile(DownloadFileRequest) returns (DownloadFileResponse);
+
+  // 获取文件信息
+  rpc GetFileInfo(GetFileInfoRequest) returns (GetFileInfoResponse);
+
+  // 删除文件
+  rpc DeleteFile(DeleteFileRequest) returns (DeleteFileResponse);
+
+  // 列出用户文件列表
+  rpc ListFiles(ListFilesRequest) returns (ListFilesResponse);
+}
+
+// 上传文件请求
+message UploadFileRequest {
+  string user_id = 1;       // 用户ID
+  string filename = 2;      // 文件名
+  string file_type = 3;     // 文件类型，例如 image/png
+  bytes content = 4;        // 文件内容
+}
+
+// 上传文件响应
+message UploadFileResponse {
+  string file_id = 1;       // 文件ID
+  string url = 2;           // 文件访问URL
+  int64 size = 3;           // 文件大小
+}
+
+// 下载文件请求
+message DownloadFileRequest {
+  string file_id = 1;       // 文件ID
+}
+
+// 下载文件响应
+message DownloadFileResponse {
+  string filename = 1;      // 文件名
+  string file_type = 2;     // 文件类型
+  bytes content = 3;        // 文件内容
+  int64 size = 4;           // 文件大小
+}
+
+// 获取文件信息请求
+message GetFileInfoRequest {
+  string file_id = 1;       // 文件ID
+}
+
+// 获取文件信息响应
+message GetFileInfoResponse {
+  string file_id = 1;       // 文件ID
+  string user_id = 2;       // 用户ID
+  string filename = 3;      // 文件名
+  string file_type = 4;     // 文件类型
+  int64 size = 5;           // 文件大小
+  string url = 6;           // 文件访问URL
+  string created_at = 7;    // 上传时间
+}
+
+// 删除文件请求
+message DeleteFileRequest {
+  string file_id = 1;       // 文件ID
+}
+
+// 删除文件响应
+message DeleteFileResponse {
+  bool success = 1;         // 是否删除成功
+}
+
+// 列出文件请求
+message ListFilesRequest {
+  string user_id = 1;       // 用户ID
+  int32 page = 2;           // 页码
+  int32 page_size = 3;      // 每页数量
+}
+
+// 列出文件响应
+message ListFilesResponse {
+  repeated FileItem files = 1; // 文件列表
+  int32 total = 2;             // 文件总数
+}
+
+// 文件条目
+message FileItem {
+  string file_id = 1;
+  string filename = 2;
+  string file_type = 3;
+  int64 size = 4;
+  string url = 5;
+  string created_at = 6;
+}
