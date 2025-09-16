@@ -177,7 +177,7 @@ spec:
     - name: tcp-redis
       protocol: TCP
       port: 6379
-  sessionAffinity: None
+      targetPort: 6379
   selector:
     app: redis
 ---
@@ -192,7 +192,7 @@ spec:
     - name: tcp-sentinel
       protocol: TCP
       port: 16379
-  sessionAffinity: None
+      targetPort: 16379
   selector:
     app: redis-sentinel
 ---

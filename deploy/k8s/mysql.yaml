@@ -18,11 +18,6 @@ data:
     REPL_USER=repl
     REPL_PASSWORD=1qaz@2wsX
     
-    until mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "SELECT 1;" &>/dev/null; do
-      echo "Waiting for master..."
-      sleep 3
-    done
-    
     mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "create user '$REPL_USER'@'%' identified by '$REPL_PASSWORD';"
     mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "grant replication slave on *.* to '$REPL_USER'@'%';"
     
@@ -42,6 +37,9 @@ data:
     #!/bin/bash
     set -e
     
+    export ORDINAL=$(echo $HOSTNAME | awk -F'-' '{print $NF}')
+    export SERVER_ID=$((ORDINAL + 2))
+    
     MASTER_HOST=mysql-master-0.mysql-master-hl
     MYSQL_ROOT_PASSWORD=1qaz@2wsX
     REPL_USER=repl
@@ -59,7 +57,7 @@ data:
     #LOG_POS=$(echo "$MASTER_STATUS" | grep Position | awk '{print $2}')
     
     # 配置 Slave
-    mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "
+    mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -P 3307 -e "
     CHANGE REPLICATION SOURCE TO SOURCE_HOST='$MASTER_HOST', SOURCE_USER='$REPL_USER', SOURCE_PASSWORD='$REPL_PASSWORD', 
                    SOURCE_PORT=3306, SOURCE_LOG_FILE='mysql-bin.000002', SOURCE_LOG_POS=158, SOURCE_SSL=1;
     START REPLICA;
@@ -68,19 +66,21 @@ data:
   my.cnf: |
     [mysqld]
     server-id=1
+    bind-address=0.0.0.0
+    port=3306
     log-bin=mysql-bin
     binlog-format=ROW
     relay-log=mysql-relay-bin
     sync_binlog=1
-    skip-name-resolve
   slave.cnf: |
     [mysqld]
-    server-id=2
+    server-id=[[SERVER_ID]]
+    bind-address=0.0.0.0
+    port=3307
     log-bin=mysql-bin
     binlog-format=ROW
     relay-log=mysql-relay-bin
     sync_binlog=1
-    skip-name-resolve
     read_only= 1
 ---
 apiVersion: v1
@@ -105,11 +105,10 @@ metadata:
   namespace: mysql
 spec:
   ports:
-    - port: 3306
+    - port: 3307
       protocol: TCP
-      targetPort: 3306
+      targetPort: 3307
       name: tcp-mysql
-  sessionAffinity: None
   clusterIP: None
   selector:
     app: mysql-slave
@@ -123,7 +122,6 @@ spec:
   ports:
     - port: 3306
       protocol: TCP
-      targetPort: 3306
       nodePort: 3306
       name: tcp-mysql
   type: NodePort
@@ -137,9 +135,8 @@ metadata:
   namespace: mysql
 spec:
   ports:
-    - port: 3306
+    - port: 3307
       protocol: TCP
-      targetPort: 3306
       nodePort: 3307
       name: tcp-mysql
   type: NodePort
@@ -214,12 +211,29 @@ spec:
       labels:
         app: mysql-slave
     spec:
+      initContainers:
+        - name: init-conf
+          image: busybox:1.37
+          command:
+            - sh
+            - -c
+            - |
+              ORDINAL=$(echo $HOSTNAME | awk -F'-' '{print $NF}')
+              SERVER_ID=$((ORDINAL + 2))
+              echo "Init server-id=${SERVER_ID}"
+              sed "s/\[\[SERVER_ID\]\]/$SERVER_ID/" /tmp/my.cnf > /conf/my.cnf
+          volumeMounts:
+            - mountPath: /tmp/my.cnf
+              name: init
+              subPath: slave.cnf
+            - mountPath: /conf
+              name: cnf
       containers:
         - name: mysql-slave
           image: mysql:8.4.6
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 3306
+            - containerPort: 3307
           volumeMounts:
             - mountPath: /var/lib/mysql
               name: data
@@ -227,8 +241,8 @@ spec:
               name: init
               subPath: slave_init.sh
             - mountPath: /etc/mysql/my.cnf
-              name: init
-              subPath: slave.cnf
+              name: cnf
+              subPath: my.cnf
           env:
             - name: MYSQL_ROOT_PASSWORD
               value: "1qaz@2wsX"
@@ -240,6 +254,8 @@ spec:
         - name: init
           configMap:
             name: mysql-cm
+        - name: cnf
+          emptyDir: {}
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
