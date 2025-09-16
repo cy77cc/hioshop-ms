@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package file;
+
+option go_package = "./pb";
+
+message UploadChunk {
+  bytes data = 1;
+  // 在第一条 chunk 中可以带上文件名和 content_type（也可放在 HTTP 表单字段中）
+  string filename = 2;
+  string content_type = 3;
+  int64 offset = 4;
+}
+
+message UploadResponse {
+  string id = 1;
+  string url = 2;
+  string filename = 3;
+  int64 size = 4;
+  string message = 5;
+}
+
+service File {
+  // 客户端流：客户端连续发送 UploadChunk，结束后服务端返回 UploadResponse
+  rpc Upload(stream UploadChunk) returns (UploadResponse);
+}

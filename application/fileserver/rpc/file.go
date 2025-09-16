@@ -7,7 +7,7 @@ import (
 	"github.com/cy77cc/hioshop_ms/application/fileserver/rpc/internal/config"
 	"github.com/cy77cc/hioshop_ms/application/fileserver/rpc/internal/server"
 	"github.com/cy77cc/hioshop_ms/application/fileserver/rpc/internal/svc"
-	"github.com/cy77cc/hioshop_ms/application/fileserver/rpc/pb/pb"
+	"github.com/cy77cc/hioshop_ms/application/fileserver/rpc/pb"
 
 	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/core/service"
@@ -16,7 +16,7 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
-var configFile = flag.String("f", "etc/fileserver.yaml", "the config file")
+var configFile = flag.String("f", "etc/file.yaml", "the config file")
 
 func main() {
 	flag.Parse()
@@ -26,7 +26,7 @@ func main() {
 	ctx := svc.NewServiceContext(c)
 
 	s := zrpc.MustNewServer(c.RpcServerConf, func(grpcServer *grpc.Server) {
-		pb.RegisterFileServiceServer(grpcServer, server.NewFileServiceServer(ctx))
+		pb.RegisterFileServer(grpcServer, server.NewFileServer(ctx))
 
 		if c.Mode == service.DevMode || c.Mode == service.TestMode {
 			reflection.Register(grpcServer)

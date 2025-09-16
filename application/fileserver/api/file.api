@@ -1,0 +1,24 @@
+syntax = "v1"
+
+info (
+	title:   "File Service API"
+	desc:    "文件服务，提供文件上传、下载、删除、查询等功能"
+	author:  "your-name"
+	version: "1.0"
+)
+
+type UploadResp {
+	Id          string `json:"id"`
+	Url         string `json:"url"`
+	Name        string `json:"name"`
+	Size        int64  `json:"size"`
+	ContentType string `json:"content_type"`
+}
+
+service file {
+	//   使用自定义 handler，因为文件是 multipart/form-data，goctl 不会帮你把文件自动绑定到结构体上。
+	@doc "文件上传"
+	@handler UploadHandler
+	post /upload returns (UploadResp)
+}
+
