@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/cy77cc/hioshop_ms/application/fileserver/rpc/internal/svc"
-	"github.com/cy77cc/hioshop_ms/application/fileserver/rpc/pb/pb"
+	"github.com/cy77cc/hioshop_ms/application/fileserver/rpc/pb"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )

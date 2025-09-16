@@ -9,23 +9,23 @@ import (
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
-type UploadFileLogic struct {
+type UploadLogic struct {
 	ctx    context.Context
 	svcCtx *svc.ServiceContext
 	logx.Logger
 }
 
-func NewUploadFileLogic(ctx context.Context, svcCtx *svc.ServiceContext) *UploadFileLogic {
-	return &UploadFileLogic{
+func NewUploadLogic(ctx context.Context, svcCtx *svc.ServiceContext) *UploadLogic {
+	return &UploadLogic{
 		ctx:    ctx,
 		svcCtx: svcCtx,
 		Logger: logx.WithContext(ctx),
 	}
 }
 
-// 上传文件
-func (l *UploadFileLogic) UploadFile(in *pb.UploadFileRequest) (*pb.UploadFileResponse, error) {
+// 客户端流：客户端连续发送 UploadChunk，结束后服务端返回 UploadResponse
+func (l *UploadLogic) Upload(stream pb.File_UploadServer) error {
 	// todo: add your logic here and delete this line
 
-	return &pb.UploadFileResponse{}, nil
+	return nil
 }
