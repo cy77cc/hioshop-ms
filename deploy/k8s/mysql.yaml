@@ -31,7 +31,7 @@ data:
     fi
     
     mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "flush privileges;"
-    
+  
 
   slave_init.sh: |
     #!/bin/bash
@@ -59,7 +59,7 @@ data:
     # 配置 Slave
     mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -P 3307 -e "
     CHANGE REPLICATION SOURCE TO SOURCE_HOST='$MASTER_HOST', SOURCE_USER='$REPL_USER', SOURCE_PASSWORD='$REPL_PASSWORD', 
-                   SOURCE_PORT=3306, SOURCE_LOG_FILE='mysql-bin.000002', SOURCE_LOG_POS=158, SOURCE_SSL=1;
+                   SOURCE_PORT=3306, SOURCE_SSL=1;
     START REPLICA;
     "
 
@@ -82,6 +82,61 @@ data:
     relay-log=mysql-relay-bin
     sync_binlog=1
     read_only= 1
+---
+apiVersion: networking.istio.io/v1
+kind: Gateway
+metadata:
+  name: tcp-mysql-gateway
+  namespace: mysql # IngressGateway 所在命名空间
+spec:
+  selector:
+    istio: ingressgateway   # 绑定默认 Istio IngressGateway
+  servers:
+    - port:
+        number: 33306        # 外部访问端口
+        name: tcp-mysql-master       # 名称必须以 tcp- 开头
+        protocol: TCP
+      hosts:
+        - "*"                   # 允许所有外部 IP
+---
+# ===============================
+# DestinationRule: 定义 MySQL 服务
+# ===============================
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata:
+  name: mysql-destination
+  namespace: mysql        # MySQL 服务所在命名空间
+spec:
+  host: mysql-master.mysql.svc.cluster.local             # 集群内服务名
+  trafficPolicy:
+    # 可选：启用连接池或负载均衡策略
+    loadBalancer:
+      simple: ROUND_ROBIN
+
+---
+
+# ===============================
+# VirtualService: TCP 路由 MySQL
+# ===============================
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: mysql-virtualservice
+  namespace: mysql   # 与 Gateway 同一命名空间
+spec:
+  hosts:
+    - "*"                     # 对应 Gateway hosts
+  gateways:
+    - tcp-mysql-gateway
+  tcp:
+    - match:
+        - port: 33306           # 外部访问端口
+      route:
+        - destination:
+            host: mysql-master.mysql.svc.cluster.local         # 集群内 MySQL 服务
+            port:
+              number: 3306
 ---
 apiVersion: v1
 kind: Service
@@ -121,10 +176,9 @@ metadata:
 spec:
   ports:
     - port: 3306
-      protocol: TCP
-      nodePort: 3306
+      targetPort: 3306
       name: tcp-mysql
-  type: NodePort
+  type: ClusterIP
   selector:
     app: mysql-master
 ---
@@ -136,10 +190,9 @@ metadata:
 spec:
   ports:
     - port: 3307
-      protocol: TCP
-      nodePort: 3307
+      targetPort: 3307
       name: tcp-mysql
-  type: NodePort
+  type: ClusterIP
   selector:
     app: mysql-slave
 ---
@@ -177,6 +230,24 @@ spec:
           env:
             - name: MYSQL_ROOT_PASSWORD
               value: "1qaz@2wsX"
+          startupProbe:
+            tcpSocket:
+              port: 3306
+            initialDelaySeconds: 30
+            failureThreshold: 5
+            periodSeconds: 5
+          readinessProbe:
+            tcpSocket:
+              port: 3306
+            initialDelaySeconds: 15
+            failureThreshold: 5
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: 3306
+            initialDelaySeconds: 20
+            failureThreshold: 5
+            periodSeconds: 5
       volumes:
         - name: data
           hostPath:
@@ -246,6 +317,24 @@ spec:
           env:
             - name: MYSQL_ROOT_PASSWORD
               value: "1qaz@2wsX"
+          startupProbe:
+            tcpSocket:
+              port: 3307
+            initialDelaySeconds: 30
+            failureThreshold: 5
+            periodSeconds: 5
+          readinessProbe:
+            tcpSocket:
+              port: 3307
+            initialDelaySeconds: 15
+            failureThreshold: 5
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: 3307
+            initialDelaySeconds: 20
+            failureThreshold: 5
+            periodSeconds: 5
       volumes:
         - name: data
           hostPath:
@@ -255,7 +344,7 @@ spec:
           configMap:
             name: mysql-cm
         - name: cnf
-          emptyDir: {}
+          emptyDir: { }
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
