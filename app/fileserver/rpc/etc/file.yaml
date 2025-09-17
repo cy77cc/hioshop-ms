@@ -12,6 +12,11 @@ Minio:
   UseSSL: false
   Bucket: fileserver
 
+CacheRedis:
+  Host: 127.0.0.1:16379
+  Password: 1qaz@2wsX
+  Type: sentinel
+
 Auth:
   AccessSecret: uOvKLmVfztaXGpNYd4Z0I1SiT7MweJhl
   AccessExpire: 86400

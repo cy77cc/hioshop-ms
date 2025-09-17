@@ -37,7 +37,7 @@ type (
 )
 
 @server (
-	Auth:   jwt
+	jwt:    Auth
 	prefix: /v1
 	group:  upload
 )

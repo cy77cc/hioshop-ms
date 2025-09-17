@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/cy77cc/hioshop_ms/app/fileserver/model"
 	"github.com/cy77cc/hioshop_ms/app/fileserver/rpc/internal/svc"
 	"github.com/cy77cc/hioshop_ms/app/fileserver/rpc/pb"
 	"github.com/minio/minio-go/v7"
@@ -33,6 +34,18 @@ func (l *InitUploadLogic) InitUpload(in *pb.InitUploadReq) (*pb.InitUploadResp, 
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+
+	// 将文件信息存储到数据库
+	_, err = l.svcCtx.FileModel.Insert(l.ctx, &model.FileInfo{
+		FileName:    in.FileName,
+		Size:        in.FileSize,
+		ContentType: in.FileType,
+		Hash:        in.Hash,
+		Bucket:      l.svcCtx.Config.Minio.Bucket,
+		ObjectName:  objName,
+		Uploader:    uint64(in.Uploader),
+	})
+
 	return &pb.InitUploadResp{
 		Bucket:   l.svcCtx.Config.Minio.Bucket,
 		UploadId: uploadID,

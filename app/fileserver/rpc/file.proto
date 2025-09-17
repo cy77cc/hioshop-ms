@@ -9,6 +9,7 @@ message InitUploadReq {
   string fileName = 2;
   string fileType = 3;
   int64 fileSize = 4;
+  int64 uploader = 5;
 }
 
 message InitUploadResp {

@@ -5,6 +5,7 @@ import (
 	"github.com/cy77cc/hioshop_ms/app/fileserver/rpc/internal/config"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+	"github.com/redis/go-redis/v9"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
@@ -28,6 +29,9 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		Secure:     c.Minio.UseSSL,
 		MaxRetries: 5,
 	})
+
+	redis.NewFailoverClient(&redis.FailoverOptions{})
+
 	conn := sqlx.NewMysql(c.Mysql.DataSource)
 	return &ServiceContext{
 		Config:      c,

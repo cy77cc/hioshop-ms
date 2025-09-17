@@ -2,6 +2,7 @@ package upload
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/cy77cc/hioshop_ms/app/fileserver/api/internal/svc"
 	"github.com/cy77cc/hioshop_ms/app/fileserver/api/internal/types"
@@ -26,8 +27,8 @@ func NewFileUploadInitLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Fi
 }
 
 func (l *FileUploadInitLogic) FileUploadInit(req *types.InitUploadReq) (resp *types.InitUploadResp, err error) {
-
-	uploadResp, err := l.svcCtx.FileRpc.InitUpload(l.ctx, &pb.InitUploadReq{Hash: req.Hash, FileName: req.FileName})
+	userId, _ := l.ctx.Value("uid").(json.Number).Int64()
+	uploadResp, err := l.svcCtx.FileRpc.InitUpload(l.ctx, &pb.InitUploadReq{Hash: req.Hash, FileName: req.FileName, Uploader: userId})
 	if err != nil {
 		return nil, err
 	}
