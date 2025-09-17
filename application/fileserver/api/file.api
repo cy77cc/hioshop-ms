@@ -15,10 +15,26 @@ type UploadResp {
 	ContentType string `json:"content_type"`
 }
 
+type InitUploadReq {
+	FileName string `json:"file" binding:"required"`
+    ChunkNum int64 `json:"chunk_num"`
+	ChunkSize int64 `json:"chunk_size"`
+    ChunkIndex int64 `json:"chunk_index"`
+    FileSize int64 `json:"file_size"`
+}
+
+type InitUploadResp {
+    UploadID string `json:"upload_id"`
+}
+
 service file {
 	//   使用自定义 handler，因为文件是 multipart/form-data，goctl 不会帮你把文件自动绑定到结构体上。
 	@doc "文件上传"
 	@handler UploadHandler
 	post /upload returns (UploadResp)
+
+	@doc "大文件上传初始化"
+    @handler InitUploadHandler
+	post /upload/init (InitUploadReq) returns (InitUploadResp)
 }
 
