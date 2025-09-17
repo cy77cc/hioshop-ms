@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/zeromicro/go-zero/core/stores/builder"
+	"github.com/zeromicro/go-zero/core/stores/cache"
+	"github.com/zeromicro/go-zero/core/stores/sqlc"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 	"github.com/zeromicro/go-zero/core/stringx"
 )
@@ -21,6 +23,9 @@ var (
 	fileInfoRows                = strings.Join(fileInfoFieldNames, ",")
 	fileInfoRowsExpectAutoSet   = strings.Join(stringx.Remove(fileInfoFieldNames, "`id`", "`create_at`", "`create_time`", "`created_at`", "`update_at`", "`update_time`", "`updated_at`"), ",")
 	fileInfoRowsWithPlaceHolder = strings.Join(stringx.Remove(fileInfoFieldNames, "`id`", "`create_at`", "`create_time`", "`created_at`", "`update_at`", "`update_time`", "`updated_at`"), "=?,") + "=?"
+
+	cacheFileInfoIdPrefix     = "cache:fileInfo:id:"
+	cacheFileInfoFileIdPrefix = "cache:fileInfo:fileId:"
 )
 
 type (
@@ -33,7 +38,7 @@ type (
 	}
 
 	defaultFileInfoModel struct {
-		conn  sqlx.SqlConn
+		sqlc.CachedConn
 		table string
 	}
 
@@ -54,27 +59,39 @@ type (
 	}
 )
 
-func newFileInfoModel(conn sqlx.SqlConn) *defaultFileInfoModel {
+func newFileInfoModel(conn sqlx.SqlConn, c cache.CacheConf, opts ...cache.Option) *defaultFileInfoModel {
 	return &defaultFileInfoModel{
-		conn:  conn,
-		table: "`file_info`",
+		CachedConn: sqlc.NewConn(conn, c, opts...),
+		table:      "`file_info`",
 	}
 }
 
 func (m *defaultFileInfoModel) Delete(ctx context.Context, id uint64) error {
-	query := fmt.Sprintf("delete from %s where `id` = ?", m.table)
-	_, err := m.conn.ExecCtx(ctx, query, id)
+	data, err := m.FindOne(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	fileInfoFileIdKey := fmt.Sprintf("%s%v", cacheFileInfoFileIdPrefix, data.FileId)
+	fileInfoIdKey := fmt.Sprintf("%s%v", cacheFileInfoIdPrefix, id)
+	_, err = m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
+		query := fmt.Sprintf("delete from %s where `id` = ?", m.table)
+		return conn.ExecCtx(ctx, query, id)
+	}, fileInfoFileIdKey, fileInfoIdKey)
 	return err
 }
 
 func (m *defaultFileInfoModel) FindOne(ctx context.Context, id uint64) (*FileInfo, error) {
-	query := fmt.Sprintf("select %s from %s where `id` = ? limit 1", fileInfoRows, m.table)
+	fileInfoIdKey := fmt.Sprintf("%s%v", cacheFileInfoIdPrefix, id)
 	var resp FileInfo
-	err := m.conn.QueryRowCtx(ctx, &resp, query, id)
+	err := m.QueryRowCtx(ctx, &resp, fileInfoIdKey, func(ctx context.Context, conn sqlx.SqlConn, v any) error {
+		query := fmt.Sprintf("select %s from %s where `id` = ? limit 1", fileInfoRows, m.table)
+		return conn.QueryRowCtx(ctx, v, query, id)
+	})
 	switch err {
 	case nil:
 		return &resp, nil
-	case sqlx.ErrNotFound:
+	case sqlc.ErrNotFound:
 		return nil, ErrNotFound
 	default:
 		return nil, err
@@ -82,13 +99,19 @@ func (m *defaultFileInfoModel) FindOne(ctx context.Context, id uint64) (*FileInf
 }
 
 func (m *defaultFileInfoModel) FindOneByFileId(ctx context.Context, fileId string) (*FileInfo, error) {
+	fileInfoFileIdKey := fmt.Sprintf("%s%v", cacheFileInfoFileIdPrefix, fileId)
 	var resp FileInfo
-	query := fmt.Sprintf("select %s from %s where `file_id` = ? limit 1", fileInfoRows, m.table)
-	err := m.conn.QueryRowCtx(ctx, &resp, query, fileId)
+	err := m.QueryRowIndexCtx(ctx, &resp, fileInfoFileIdKey, m.formatPrimary, func(ctx context.Context, conn sqlx.SqlConn, v any) (i any, e error) {
+		query := fmt.Sprintf("select %s from %s where `file_id` = ? limit 1", fileInfoRows, m.table)
+		if err := conn.QueryRowCtx(ctx, &resp, query, fileId); err != nil {
+			return nil, err
+		}
+		return resp.Id, nil
+	}, m.queryPrimary)
 	switch err {
 	case nil:
 		return &resp, nil
-	case sqlx.ErrNotFound:
+	case sqlc.ErrNotFound:
 		return nil, ErrNotFound
 	default:
 		return nil, err
@@ -96,15 +119,37 @@ func (m *defaultFileInfoModel) FindOneByFileId(ctx context.Context, fileId strin
 }
 
 func (m *defaultFileInfoModel) Insert(ctx context.Context, data *FileInfo) (sql.Result, error) {
-	query := fmt.Sprintf("insert into %s (%s) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", m.table, fileInfoRowsExpectAutoSet)
-	ret, err := m.conn.ExecCtx(ctx, query, data.FileId, data.FileName, data.Bucket, data.ObjectName, data.Size, data.ContentType, data.Uploader, data.UploadTime, data.Hash, data.Description, data.DeletedTime, data.Status)
+	fileInfoFileIdKey := fmt.Sprintf("%s%v", cacheFileInfoFileIdPrefix, data.FileId)
+	fileInfoIdKey := fmt.Sprintf("%s%v", cacheFileInfoIdPrefix, data.Id)
+	ret, err := m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
+		query := fmt.Sprintf("insert into %s (%s) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", m.table, fileInfoRowsExpectAutoSet)
+		return conn.ExecCtx(ctx, query, data.FileId, data.FileName, data.Bucket, data.ObjectName, data.Size, data.ContentType, data.Uploader, data.UploadTime, data.Hash, data.Description, data.DeletedTime, data.Status)
+	}, fileInfoFileIdKey, fileInfoIdKey)
 	return ret, err
 }
 
 func (m *defaultFileInfoModel) Update(ctx context.Context, newData *FileInfo) error {
-	query := fmt.Sprintf("update %s set %s where `id` = ?", m.table, fileInfoRowsWithPlaceHolder)
-	_, err := m.conn.ExecCtx(ctx, query, newData.FileId, newData.FileName, newData.Bucket, newData.ObjectName, newData.Size, newData.ContentType, newData.Uploader, newData.UploadTime, newData.Hash, newData.Description, newData.DeletedTime, newData.Status, newData.Id)
+	data, err := m.FindOne(ctx, newData.Id)
+	if err != nil {
+		return err
+	}
+
+	fileInfoFileIdKey := fmt.Sprintf("%s%v", cacheFileInfoFileIdPrefix, data.FileId)
+	fileInfoIdKey := fmt.Sprintf("%s%v", cacheFileInfoIdPrefix, data.Id)
+	_, err = m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
+		query := fmt.Sprintf("update %s set %s where `id` = ?", m.table, fileInfoRowsWithPlaceHolder)
+		return conn.ExecCtx(ctx, query, newData.FileId, newData.FileName, newData.Bucket, newData.ObjectName, newData.Size, newData.ContentType, newData.Uploader, newData.UploadTime, newData.Hash, newData.Description, newData.DeletedTime, newData.Status, newData.Id)
+	}, fileInfoFileIdKey, fileInfoIdKey)
 	return err
+}
+
+func (m *defaultFileInfoModel) formatPrimary(primary any) string {
+	return fmt.Sprintf("%s%v", cacheFileInfoIdPrefix, primary)
+}
+
+func (m *defaultFileInfoModel) queryPrimary(ctx context.Context, conn sqlx.SqlConn, v, primary any) error {
+	query := fmt.Sprintf("select %s from %s where `id` = ? limit 1", fileInfoRows, m.table)
+	return conn.QueryRowCtx(ctx, v, query, primary)
 }
 
 func (m *defaultFileInfoModel) tableName() string {
