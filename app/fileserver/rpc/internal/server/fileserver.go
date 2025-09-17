@@ -5,6 +5,8 @@
 package server
 
 import (
+	"context"
+
 	"github.com/cy77cc/hioshop_ms/app/fileserver/rpc/internal/logic"
 	"github.com/cy77cc/hioshop_ms/app/fileserver/rpc/internal/svc"
 	"github.com/cy77cc/hioshop_ms/app/fileserver/rpc/pb"
@@ -21,8 +23,18 @@ func NewFileServer(svcCtx *svc.ServiceContext) *FileServer {
 	}
 }
 
-// 客户端流：客户端连续发送 UploadChunk，结束后服务端返回 UploadResponse
-func (s *FileServer) Upload(stream pb.File_UploadServer) error {
-	l := logic.NewUploadLogic(stream.Context(), s.svcCtx)
-	return l.Upload(stream)
+func (s *FileServer) InitUpload(ctx context.Context, in *pb.InitUploadReq) (*pb.InitUploadResp, error) {
+	l := logic.NewInitUploadLogic(ctx, s.svcCtx)
+	return l.InitUpload(in)
+}
+
+// 流式上传分片
+func (s *FileServer) UploadPart(stream pb.File_UploadPartServer) error {
+	l := logic.NewUploadPartLogic(stream.Context(), s.svcCtx)
+	return l.UploadPart(stream)
+}
+
+func (s *FileServer) CompleteUpload(ctx context.Context, in *pb.CompleteUploadReq) (*pb.CompleteUploadResp, error) {
+	l := logic.NewCompleteUploadLogic(ctx, s.svcCtx)
+	return l.CompleteUpload(in)
 }

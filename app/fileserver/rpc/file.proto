@@ -4,34 +4,44 @@ package file;
 
 option go_package = "./pb";
 
-message UploadChunk {
-  bytes data = 1;
-  // 在第一条 chunk 中可以带上文件名和 content_type（也可放在 HTTP 表单字段中）
-  string filename = 2;
-  string content_type = 3;
-  int64 offset = 4;
+message InitUploadReq {
+  string hash = 1;
+  string fileName = 2;
+  string fileType = 3;
+  int64 fileSize = 4;
 }
 
-message UploadResponse {
-  string id = 1;
-  string url = 2;
-  string filename = 3;
-  int64 size = 4;
-  string message = 5;
+message InitUploadResp {
+  string uploadId = 1;
+  string bucket = 2;
 }
 
-message UploadInit {
-  string filename = 1;
-  string content_type = 2;
+message UploadPartReq {
+  string uploadId = 1;
+  int32 partNumber = 2;
+  bytes chunkData = 3;  // 分片流中的一部分数据
 }
 
-message UploadInitResponse {
-  string upload_id = 1;  // uploadId
-  string message = 2;
+message UploadPartResp {
+  string etag = 1;      // MinIO 返回的分片 ETag
 }
 
+message CompleteUploadReq {
+  string uploadId = 1;
+  string hash = 2;
+}
+
+message CompleteUploadResp {
+  int64 fileId = 1;
+  string fileUrl = 2;
+}
+
+// ========== 服务定义 ==========
 service File {
-  // 客户端流：客户端连续发送 UploadChunk，结束后服务端返回 UploadResponse
-  rpc Upload(stream UploadChunk) returns (UploadResponse);
-  rpc Init(UploadInit) returns (UploadInitResponse);
+  rpc InitUpload(InitUploadReq) returns (InitUploadResp);
+
+  // 流式上传分片
+  rpc UploadPart(stream UploadPartReq) returns (UploadPartResp);
+
+  rpc CompleteUpload(CompleteUploadReq) returns (CompleteUploadResp);
 }

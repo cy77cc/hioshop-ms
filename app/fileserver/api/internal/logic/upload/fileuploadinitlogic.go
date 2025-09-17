@@ -1,4 +1,4 @@
-package logic
+package upload
 
 import (
 	"context"
@@ -9,22 +9,22 @@ import (
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
-type InitUploadLogic struct {
+type FileUploadInitLogic struct {
 	logx.Logger
 	ctx    context.Context
 	svcCtx *svc.ServiceContext
 }
 
-// 大文件上传初始化
-func NewInitUploadLogic(ctx context.Context, svcCtx *svc.ServiceContext) *InitUploadLogic {
-	return &InitUploadLogic{
+// 初始化上传，生成 uploadId
+func NewFileUploadInitLogic(ctx context.Context, svcCtx *svc.ServiceContext) *FileUploadInitLogic {
+	return &FileUploadInitLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
 		svcCtx: svcCtx,
 	}
 }
 
-func (l *InitUploadLogic) InitUpload(req *types.InitUploadReq) (resp *types.InitUploadResp, err error) {
+func (l *FileUploadInitLogic) FileUploadInit(req *types.InitUploadReq) (resp *types.InitUploadResp, err error) {
 	// todo: add your logic here and delete this line
 
 	return

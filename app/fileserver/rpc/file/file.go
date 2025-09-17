@@ -14,12 +14,18 @@ import (
 )
 
 type (
-	UploadChunk    = pb.UploadChunk
-	UploadResponse = pb.UploadResponse
+	CompleteUploadReq  = pb.CompleteUploadReq
+	CompleteUploadResp = pb.CompleteUploadResp
+	InitUploadReq      = pb.InitUploadReq
+	InitUploadResp     = pb.InitUploadResp
+	UploadPartReq      = pb.UploadPartReq
+	UploadPartResp     = pb.UploadPartResp
 
 	File interface {
-		// 客户端流：客户端连续发送 UploadChunk，结束后服务端返回 UploadResponse
-		Upload(ctx context.Context, opts ...grpc.CallOption) (pb.File_UploadClient, error)
+		InitUpload(ctx context.Context, in *InitUploadReq, opts ...grpc.CallOption) (*InitUploadResp, error)
+		// 流式上传分片
+		UploadPart(ctx context.Context, opts ...grpc.CallOption) (pb.File_UploadPartClient, error)
+		CompleteUpload(ctx context.Context, in *CompleteUploadReq, opts ...grpc.CallOption) (*CompleteUploadResp, error)
 	}
 
 	defaultFile struct {
@@ -33,8 +39,18 @@ func NewFile(cli zrpc.Client) File {
 	}
 }
 
-// 客户端流：客户端连续发送 UploadChunk，结束后服务端返回 UploadResponse
-func (m *defaultFile) Upload(ctx context.Context, opts ...grpc.CallOption) (pb.File_UploadClient, error) {
+func (m *defaultFile) InitUpload(ctx context.Context, in *InitUploadReq, opts ...grpc.CallOption) (*InitUploadResp, error) {
 	client := pb.NewFileClient(m.cli.Conn())
-	return client.Upload(ctx, opts...)
+	return client.InitUpload(ctx, in, opts...)
+}
+
+// 流式上传分片
+func (m *defaultFile) UploadPart(ctx context.Context, opts ...grpc.CallOption) (pb.File_UploadPartClient, error) {
+	client := pb.NewFileClient(m.cli.Conn())
+	return client.UploadPart(ctx, opts...)
+}
+
+func (m *defaultFile) CompleteUpload(ctx context.Context, in *CompleteUploadReq, opts ...grpc.CallOption) (*CompleteUploadResp, error) {
+	client := pb.NewFileClient(m.cli.Conn())
+	return client.CompleteUpload(ctx, in, opts...)
 }

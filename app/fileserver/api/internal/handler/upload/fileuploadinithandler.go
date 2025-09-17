@@ -1,16 +1,16 @@
-package handler
+package upload
 
 import (
 	"net/http"
 
-	"github.com/cy77cc/hioshop_ms/app/fileserver/api/internal/logic"
+	"github.com/cy77cc/hioshop_ms/app/fileserver/api/internal/logic/upload"
 	"github.com/cy77cc/hioshop_ms/app/fileserver/api/internal/svc"
 	"github.com/cy77cc/hioshop_ms/app/fileserver/api/internal/types"
 	"github.com/zeromicro/go-zero/rest/httpx"
 )
 
-// 大文件上传初始化
-func InitUploadHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+// 初始化上传，生成 uploadId
+func FileUploadInitHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req types.InitUploadReq
 		if err := httpx.Parse(r, &req); err != nil {
@@ -18,8 +18,8 @@ func InitUploadHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 
-		l := logic.NewInitUploadLogic(r.Context(), svcCtx)
-		resp, err := l.InitUpload(&req)
+		l := upload.NewFileUploadInitLogic(r.Context(), svcCtx)
+		resp, err := l.FileUploadInit(&req)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)
 		} else {

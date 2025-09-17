@@ -1,60 +1,57 @@
 syntax = "v1"
 
 info (
-	title:   "File Service API"
-	desc:    "文件服务，提供文件上传、下载、删除、查询等功能"
-	author:  "your-name"
+	title:   "文件服务 API"
+	desc:    "支持分片上传（小文件 1 个分片，大文件多个分片）"
+	author:  "you"
 	version: "1.0"
 )
 
-type UploadResp {
-	Path       string `json:"path"`
-	PartNumber int64  `json:"part_number"`
-	ETag       string `json:"etag"`
-}
-
-type UploadReq {
-	FileName   string `json:"file_name" binding:"required"`
-	UploadID   string `json:"upload_id"`
-	PartNumber int64  `json:"part_number"`
-}
-
-type InitUploadReq {
-	FileName    string `json:"file_name" binding:"required"`
-	ChunkNum    int64  `json:"chunk_num"`
-	ChunkSize   int64  `json:"chunk_size"`
-	ChunkIndex  int64  `json:"chunk_index"`
-	FileSize    int64  `json:"file_size"`
-	Hash        string `json:"hash"`
-	ContentType string `json:"content_type"`
-}
-
-type InitUploadResp {
-	UploadID string `json:"upload_id"`
-}
-
-type CompleteUploadReq {
-	UploadID string `json:"upload_id"`
-	FileName string `json:"file_name"`
-}
+type (
+	InitUploadReq {
+		Hash     string `json:"hash"` // 文件hash，前端计算
+		FileName string `json:"fileName"` // 原始文件名
+		FileType string `json:"fileType"` // MIME 类型
+		FileSize int64  `json:"fileSize"` // 文件大小
+	}
+	InitUploadResp {
+		UploadId string `json:"uploadId"`
+		Bucket   string `json:"bucket"`
+	}
+	UploadPartReq {
+		UploadId   string `form:"uploadId"`
+		PartNumber int    `form:"partNumber"`
+		PartData   []byte `form:"partData"` // 实际分片数据（multipart）
+	}
+	UploadPartResp {
+		ETag string `json:"etag"`
+	}
+	CompleteUploadReq {
+		UploadId string `json:"uploadId"`
+		Hash     string `json:"hash"`
+	}
+	CompleteUploadResp {
+		FileId  int64  `json:"fileId"`
+		FileUrl string `json:"fileUrl"`
+	}
+)
 
 @server (
+	Auth:   jwt
 	prefix: /v1
-	jwt:    Auth
-//    middleware
+	group:  upload
 )
-service file {
-	//   使用自定义 handler，因为文件是 multipart/form-data，goctl 不会帮你把文件自动绑定到结构体上。
-	@doc "文件上传"
-	@handler UploadHandler
-	get /upload (UploadReq) returns (UploadResp)
+service file-api {
+	@doc "初始化上传，生成 uploadId"
+	@handler FileUploadInit
+	get /init (InitUploadReq) returns (InitUploadResp)
 
-	@doc "大文件上传初始化"
-	@handler InitUploadHandler
-	post /upload/init (InitUploadReq) returns (InitUploadResp)
+	@doc "上传分片"
+	@handler FileUploadPart
+	post /upload (UploadPartReq) returns (UploadPartResp)
 
-	@doc "文件上传完成"
-	@handler CompleteUploadHandler
-	get /upload/complete (CompleteUploadReq) returns (UploadResp)
+	@doc "完成上传，合并分片"
+	@handler FileUploadComplete
+	get /complete (CompleteUploadReq) returns (CompleteUploadResp)
 }
 

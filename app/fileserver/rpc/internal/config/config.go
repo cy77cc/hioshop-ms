@@ -11,7 +11,7 @@ type Config struct {
 	Mysql struct {
 		DataSource string
 	}
-	cache.CacheConf
+	CacheRedis cache.CacheConf
 }
 
 type MinioConfig struct {

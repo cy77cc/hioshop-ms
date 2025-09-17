@@ -4,32 +4,33 @@
 package types
 
 type CompleteUploadReq struct {
-	UploadID string `json:"upload_id"`
-	FileName string `json:"file_name"`
+	UploadId string `json:"uploadId"`
+	Hash     string `json:"hash"`
+}
+
+type CompleteUploadResp struct {
+	FileId  int64  `json:"fileId"`
+	FileUrl string `json:"fileUrl"`
 }
 
 type InitUploadReq struct {
-	FileName    string `json:"file_name" binding:"required"`
-	ChunkNum    int64  `json:"chunk_num"`
-	ChunkSize   int64  `json:"chunk_size"`
-	ChunkIndex  int64  `json:"chunk_index"`
-	FileSize    int64  `json:"file_size"`
-	Hash        string `json:"hash"`
-	ContentType string `json:"content_type"`
+	Hash     string `json:"hash"`     // 文件hash，前端计算
+	FileName string `json:"fileName"` // 原始文件名
+	FileType string `json:"fileType"` // MIME 类型
+	FileSize int64  `json:"fileSize"` // 文件大小
 }
 
 type InitUploadResp struct {
-	UploadID string `json:"upload_id"`
+	UploadId string `json:"uploadId"`
+	Bucket   string `json:"bucket"`
 }
 
-type UploadReq struct {
-	FileName   string `json:"file_name" binding:"required"`
-	UploadID   string `json:"upload_id"`
-	PartNumber int64  `json:"part_number"`
+type UploadPartReq struct {
+	UploadId   string `form:"uploadId"`
+	PartNumber int    `form:"partNumber"`
+	PartData   []byte `form:"partData"` // 实际分片数据（multipart）
 }
 
-type UploadResp struct {
-	Path       string `json:"path"`
-	PartNumber int64  `json:"part_number"`
-	ETag       string `json:"etag"`
+type UploadPartResp struct {
+	ETag string `json:"etag"`
 }

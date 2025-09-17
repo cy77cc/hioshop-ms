@@ -6,6 +6,7 @@ package handler
 import (
 	"net/http"
 
+	upload "github.com/cy77cc/hioshop_ms/app/fileserver/api/internal/handler/upload"
 	"github.com/cy77cc/hioshop_ms/app/fileserver/api/internal/svc"
 
 	"github.com/zeromicro/go-zero/rest"
@@ -15,25 +16,24 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	server.AddRoutes(
 		[]rest.Route{
 			{
-				// 文件上传
+				// 完成上传，合并分片
 				Method:  http.MethodGet,
-				Path:    "/upload",
-				Handler: UploadHandler(serverCtx),
+				Path:    "/complete",
+				Handler: upload.FileUploadCompleteHandler(serverCtx),
 			},
 			{
-				// 文件上传完成
+				// 初始化上传，生成 uploadId
 				Method:  http.MethodGet,
-				Path:    "/upload/complete",
-				Handler: CompleteUploadHandler(serverCtx),
+				Path:    "/init",
+				Handler: upload.FileUploadInitHandler(serverCtx),
 			},
 			{
-				// 大文件上传初始化
+				// 上传分片
 				Method:  http.MethodPost,
-				Path:    "/upload/init",
-				Handler: InitUploadHandler(serverCtx),
+				Path:    "/upload",
+				Handler: upload.FileUploadPartHandler(serverCtx),
 			},
 		},
-		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
 		rest.WithPrefix("/v1"),
 	)
 }
