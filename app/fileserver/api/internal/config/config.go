@@ -9,16 +9,12 @@ import (
 type Config struct {
 	rest.RestConf
 	FileRpc zrpc.RpcClientConf
-	Minio   MinioConfig
 	Cache   cache.CacheConf
 	Mysql   struct {
 		DataSource string
 	}
-}
-
-type MinioConfig struct {
-	Endpoint        string
-	AccessKeyID     string
-	SecretAccessKey string
-	UseSSL          bool
+	Auth struct {
+		AccessSecret string
+		AccessExpire int
+	}
 }

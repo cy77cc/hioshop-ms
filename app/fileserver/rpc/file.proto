@@ -20,7 +20,18 @@ message UploadResponse {
   string message = 5;
 }
 
+message UploadInit {
+  string filename = 1;
+  string content_type = 2;
+}
+
+message UploadInitResponse {
+  string upload_id = 1;  // uploadId
+  string message = 2;
+}
+
 service File {
   // 客户端流：客户端连续发送 UploadChunk，结束后服务端返回 UploadResponse
   rpc Upload(stream UploadChunk) returns (UploadResponse);
+  rpc Init(UploadInit) returns (UploadInitResponse);
 }

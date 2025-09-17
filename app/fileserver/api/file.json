@@ -1,0 +1,204 @@
+{
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "schemes": [
+    "https"
+  ],
+  "swagger": "2.0",
+  "info": {
+    "title": "File Service API",
+    "version": "1.0"
+  },
+  "basePath": "/",
+  "paths": {
+    "/v1/upload": {
+      "get": {
+        "produces": [
+          "application/json"
+        ],
+        "schemes": [
+          "https"
+        ],
+        "summary": "文件上传",
+        "operationId": "uploadHandler",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": [
+                "file_name",
+                "upload_id",
+                "part_number"
+              ],
+              "properties": {
+                "file_name": {
+                  "type": "string"
+                },
+                "part_number": {
+                  "type": "integer"
+                },
+                "upload_id": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "etag": {
+                  "type": "string"
+                },
+                "part_number": {
+                  "type": "integer"
+                },
+                "path": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/upload/complete": {
+      "get": {
+        "produces": [
+          "application/json"
+        ],
+        "schemes": [
+          "https"
+        ],
+        "summary": "文件上传完成",
+        "operationId": "completeUploadHandler",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": [
+                "upload_id",
+                "file_name"
+              ],
+              "properties": {
+                "file_name": {
+                  "type": "string"
+                },
+                "upload_id": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "etag": {
+                  "type": "string"
+                },
+                "part_number": {
+                  "type": "integer"
+                },
+                "path": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/upload/init": {
+      "post": {
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "schemes": [
+          "https"
+        ],
+        "summary": "大文件上传初始化",
+        "operationId": "initUploadHandler",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": [
+                "file_name",
+                "chunk_num",
+                "chunk_size",
+                "chunk_index",
+                "file_size",
+                "hash",
+                "content_type"
+              ],
+              "properties": {
+                "chunk_index": {
+                  "type": "integer"
+                },
+                "chunk_num": {
+                  "type": "integer"
+                },
+                "chunk_size": {
+                  "type": "integer"
+                },
+                "content_type": {
+                  "type": "string"
+                },
+                "file_name": {
+                  "type": "string"
+                },
+                "file_size": {
+                  "type": "integer"
+                },
+                "hash": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "upload_id": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-date": "2025-09-17 10:34:01",
+  "x-description": "This is a goctl generated swagger file.",
+  "x-github": "https://github.com/zeromicro/go-zero",
+  "x-go-zero-doc": "https://go-zero.dev/",
+  "x-goctl-version": "1.9.0"
+}

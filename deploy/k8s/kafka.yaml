@@ -15,7 +15,6 @@ metadata:
     app: kafka
 type: Opaque
 data:
-  # echo "Unitech@1998" | base64，密码 Unitech@1998，用户 admin
   client-passwords: "MXFhekAyd3NYCg=="
   system-user-password: "SkhZMXc1cjVCbQ=="
   inter-broker-password: "Y25JU0NRRzFsMw=="

@@ -38,6 +38,11 @@ type CompleteUploadReq {
 	FileName string `json:"file_name"`
 }
 
+@server (
+	prefix: /v1
+	jwt:    Auth
+//    middleware
+)
 service file {
 	//   使用自定义 handler，因为文件是 multipart/form-data，goctl 不会帮你把文件自动绑定到结构体上。
 	@doc "文件上传"
