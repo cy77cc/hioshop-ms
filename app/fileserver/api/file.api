@@ -41,7 +41,7 @@ type (
 	prefix: /v1
 	group:  upload
 )
-service file-api {
+service file {
 	@doc "初始化上传，生成 uploadId"
 	@handler FileUploadInit
 	get /init (InitUploadReq) returns (InitUploadResp)

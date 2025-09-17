@@ -1,4 +1,4 @@
-package resp
+package response
 
 import (
 	"github.com/cy77cc/hioshop_ms/common/utils"

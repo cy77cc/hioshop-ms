@@ -6,6 +6,8 @@ import (
 	"github.com/cy77cc/hioshop_ms/app/fileserver/api/internal/logic/upload"
 	"github.com/cy77cc/hioshop_ms/app/fileserver/api/internal/svc"
 	"github.com/cy77cc/hioshop_ms/app/fileserver/api/internal/types"
+	"github.com/cy77cc/hioshop_ms/common/response"
+	"github.com/cy77cc/hioshop_ms/common/xcode"
 	"github.com/zeromicro/go-zero/rest/httpx"
 )
 
@@ -19,11 +21,11 @@ func FileUploadInitHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		}
 
 		l := upload.NewFileUploadInitLogic(r.Context(), svcCtx)
-		resp, err := l.FileUploadInit(&req)
+		data, err := l.FileUploadInit(&req)
 		if err != nil {
-			httpx.ErrorCtx(r.Context(), w, err)
+			httpx.OkJsonCtx(r.Context(), w, response.Error(xcode.FileUploadFail, err.Error()))
 		} else {
-			httpx.OkJsonCtx(r.Context(), w, resp)
+			httpx.OkJsonCtx(r.Context(), w, response.Success(data))
 		}
 	}
 }

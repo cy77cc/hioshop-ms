@@ -5,6 +5,7 @@ import (
 
 	"github.com/cy77cc/hioshop_ms/app/fileserver/api/internal/svc"
 	"github.com/cy77cc/hioshop_ms/app/fileserver/api/internal/types"
+	"github.com/cy77cc/hioshop_ms/app/fileserver/rpc/pb"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -25,7 +26,14 @@ func NewFileUploadInitLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Fi
 }
 
 func (l *FileUploadInitLogic) FileUploadInit(req *types.InitUploadReq) (resp *types.InitUploadResp, err error) {
-	// todo: add your logic here and delete this line
 
-	return
+	uploadResp, err := l.svcCtx.FileRpc.InitUpload(l.ctx, &pb.InitUploadReq{Hash: req.Hash, FileName: req.FileName})
+	if err != nil {
+		return nil, err
+	}
+
+	return &types.InitUploadResp{
+		Bucket:   uploadResp.Bucket,
+		UploadId: uploadResp.UploadId,
+	}, nil
 }
