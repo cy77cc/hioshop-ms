@@ -1,34 +1,3 @@
 Name: file
 Host: 0.0.0.0
 Port: 8888
-
-Mysql:
-  DataSource: root:123456@tcp(127.0.0.1:3307)/fileserver?charset=utf8mb4&parseTime=true
-
-CacheRedis:
-  - Host: 127.0.0.1:6379
-    Pass:
-    Type: node
-
-Auth:
-  AccessSecret: uOvKLmVfztaXGpNYd4Z0I1SiT7MweJhl
-  AccessExpire: 86400
-
-FileRpc:
-  App: fileapi
-  Token: 6jKNZbEpYGeUMAifz10gOnmoty3TV
-  Etcd:
-    Hosts:
-      - 127.0.0.1:2379
-    Key: file.rpc
-
-Prometheus:
-  Host: 0.0.0.0
-  Port: 9080
-  Path: /metrics
-
-Telemetry:
-  Name: user.api
-  Endpoint: http://172.19.0.8:14268/api/traces
-  Sampler: 1.0
-  Batcher: jeager

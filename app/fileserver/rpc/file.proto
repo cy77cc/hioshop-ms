@@ -4,45 +4,33 @@ package file;
 
 option go_package = "./pb";
 
-message InitUploadReq {
-  string hash = 1;
-  string fileName = 2;
-  string fileType = 3;
-  int64 fileSize = 4;
-  int64 uploader = 5;
+message UploadReq {
+  string file_name = 1;
+  bytes data = 2;
+  string hash = 3;
+  bool is_last = 4; // 是不是最后一段
+  uint64 uid = 5;
+  string bucket = 6;
+  uint64 part_number = 7;
 }
 
-message InitUploadResp {
-  string uploadId = 1;
-  string bucket = 2;
-}
-
-message UploadPartReq {
-  string uploadId = 1;
-  int32 partNumber = 2;
-  bytes chunkData = 3;  // 分片流中的一部分数据
-}
-
-message UploadPartResp {
+message UploadResp {
   string etag = 1;      // MinIO 返回的分片 ETag
+  string upload_id = 2;
 }
 
-message CompleteUploadReq {
-  string uploadId = 1;
-  string hash = 2;
+
+message CreateBucketReq {
+  string bucket = 1;
 }
 
-message CompleteUploadResp {
-  int64 fileId = 1;
-  string fileUrl = 2;
+message CreateBucketResp {
+  string bucket = 1;
 }
-
 // ========== 服务定义 ==========
 service File {
-  rpc InitUpload(InitUploadReq) returns (InitUploadResp);
-
   // 流式上传分片
-  rpc UploadPart(stream UploadPartReq) returns (UploadPartResp);
+  rpc Upload(UploadReq) returns (UploadResp);
+  rpc CreateBucket (CreateBucketReq) returns (CreateBucketResp);
 
-  rpc CompleteUpload(CompleteUploadReq) returns (CompleteUploadResp);
 }
