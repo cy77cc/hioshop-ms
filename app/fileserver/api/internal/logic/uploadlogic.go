@@ -27,7 +27,7 @@ func NewUploadLogic(ctx context.Context, svcCtx *svc.ServiceContext) *UploadLogi
 	}
 }
 
-func (l *UploadLogic) Upload(r *http.Request) (resp *types.UploadResp, err error) {
+func (l *UploadLogic) Upload(r *http.Request, req *types.UploadReq) (resp *types.UploadResp, err error) {
 	// 限制内存用于解析表单（还会生成临时文件，视需求调整）
 	const maxMemory = 32 << 20 // 32MB
 	if err := r.ParseMultipartForm(maxMemory); err != nil {

@@ -3,10 +3,33 @@
 
 package types
 
-type UploadResp struct {
-	Id          string `json:"id"`
-	Url         string `json:"url"`
-	Name        string `json:"name"`
-	Size        int64  `json:"size"`
+type CompleteUploadReq struct {
+	UploadID string `json:"upload_id"`
+	FileName string `json:"file_name"`
+}
+
+type InitUploadReq struct {
+	FileName    string `json:"file_name" binding:"required"`
+	ChunkNum    int64  `json:"chunk_num"`
+	ChunkSize   int64  `json:"chunk_size"`
+	ChunkIndex  int64  `json:"chunk_index"`
+	FileSize    int64  `json:"file_size"`
+	Hash        string `json:"hash"`
 	ContentType string `json:"content_type"`
+}
+
+type InitUploadResp struct {
+	UploadID string `json:"upload_id"`
+}
+
+type UploadReq struct {
+	FileName   string `json:"file_name" binding:"required"`
+	UploadID   string `json:"upload_id"`
+	PartNumber int64  `json:"part_number"`
+}
+
+type UploadResp struct {
+	Path       string `json:"path"`
+	PartNumber int64  `json:"part_number"`
+	ETag       string `json:"etag"`
 }

@@ -8,33 +8,48 @@ info (
 )
 
 type UploadResp {
-	Id          string `json:"id"`
-	Url         string `json:"url"`
-	Name        string `json:"name"`
-	Size        int64  `json:"size"`
-	ContentType string `json:"content_type"`
+	Path       string `json:"path"`
+	PartNumber int64  `json:"part_number"`
+	ETag       string `json:"etag"`
+}
+
+type UploadReq {
+	FileName   string `json:"file_name" binding:"required"`
+	UploadID   string `json:"upload_id"`
+	PartNumber int64  `json:"part_number"`
 }
 
 type InitUploadReq {
-	FileName string `json:"file" binding:"required"`
-    ChunkNum int64 `json:"chunk_num"`
-	ChunkSize int64 `json:"chunk_size"`
-    ChunkIndex int64 `json:"chunk_index"`
-    FileSize int64 `json:"file_size"`
+	FileName    string `json:"file_name" binding:"required"`
+	ChunkNum    int64  `json:"chunk_num"`
+	ChunkSize   int64  `json:"chunk_size"`
+	ChunkIndex  int64  `json:"chunk_index"`
+	FileSize    int64  `json:"file_size"`
+	Hash        string `json:"hash"`
+	ContentType string `json:"content_type"`
 }
 
 type InitUploadResp {
-    UploadID string `json:"upload_id"`
+	UploadID string `json:"upload_id"`
+}
+
+type CompleteUploadReq {
+	UploadID string `json:"upload_id"`
+	FileName string `json:"file_name"`
 }
 
 service file {
 	//   使用自定义 handler，因为文件是 multipart/form-data，goctl 不会帮你把文件自动绑定到结构体上。
 	@doc "文件上传"
 	@handler UploadHandler
-	post /upload returns (UploadResp)
+	get /upload (UploadReq) returns (UploadResp)
 
 	@doc "大文件上传初始化"
-    @handler InitUploadHandler
+	@handler InitUploadHandler
 	post /upload/init (InitUploadReq) returns (InitUploadResp)
+
+	@doc "文件上传完成"
+	@handler CompleteUploadHandler
+	get /upload/complete (CompleteUploadReq) returns (UploadResp)
 }
 

@@ -16,9 +16,21 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 		[]rest.Route{
 			{
 				// 文件上传
-				Method:  http.MethodPost,
+				Method:  http.MethodGet,
 				Path:    "/upload",
 				Handler: UploadHandler(serverCtx),
+			},
+			{
+				// 文件上传完成
+				Method:  http.MethodGet,
+				Path:    "/upload/complete",
+				Handler: CompleteUploadHandler(serverCtx),
+			},
+			{
+				// 大文件上传初始化
+				Method:  http.MethodPost,
+				Path:    "/upload/init",
+				Handler: InitUploadHandler(serverCtx),
 			},
 		},
 	)
