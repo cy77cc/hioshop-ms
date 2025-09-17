@@ -5,9 +5,9 @@
 package server
 
 import (
-	"github.com/cy77cc/hioshop_ms/application/fileserver/rpc/internal/logic"
-	"github.com/cy77cc/hioshop_ms/application/fileserver/rpc/internal/svc"
-	"github.com/cy77cc/hioshop_ms/application/fileserver/rpc/pb"
+	"github.com/cy77cc/hioshop_ms/app/fileserver/rpc/internal/logic"
+	"github.com/cy77cc/hioshop_ms/app/fileserver/rpc/internal/svc"
+	"github.com/cy77cc/hioshop_ms/app/fileserver/rpc/pb"
 )
 
 type FileServer struct {

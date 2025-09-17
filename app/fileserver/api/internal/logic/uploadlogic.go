@@ -5,10 +5,10 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/cy77cc/hioshop_ms/application/fileserver/api/internal/svc"
-	"github.com/cy77cc/hioshop_ms/application/fileserver/api/internal/types"
+	"github.com/cy77cc/hioshop_ms/app/fileserver/api/internal/svc"
+	"github.com/cy77cc/hioshop_ms/app/fileserver/api/internal/types"
 
-	filepb "github.com/cy77cc/hioshop_ms/application/fileserver/rpc/pb"
+	filepb "github.com/cy77cc/hioshop_ms/app/fileserver/rpc/pb"
 	"github.com/zeromicro/go-zero/core/logx"
 )
 

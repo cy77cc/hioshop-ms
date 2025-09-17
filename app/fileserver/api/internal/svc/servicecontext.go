@@ -1,8 +1,8 @@
 package svc
 
 import (
-	"github.com/cy77cc/hioshop_ms/application/fileserver/api/internal/config"
-	"github.com/cy77cc/hioshop_ms/application/fileserver/rpc/file"
+	"github.com/cy77cc/hioshop_ms/app/fileserver/api/internal/config"
+	"github.com/cy77cc/hioshop_ms/app/fileserver/rpc/file"
 	"github.com/zeromicro/go-zero/zrpc"
 )
 

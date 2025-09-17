@@ -6,7 +6,7 @@ package handler
 import (
 	"net/http"
 
-	"github.com/cy77cc/hioshop_ms/application/fileserver/api/internal/svc"
+	"github.com/cy77cc/hioshop_ms/app/fileserver/api/internal/svc"
 
 	"github.com/zeromicro/go-zero/rest"
 )

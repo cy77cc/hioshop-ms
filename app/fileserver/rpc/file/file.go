@@ -7,7 +7,7 @@ package file
 import (
 	"context"
 
-	"github.com/cy77cc/hioshop_ms/application/fileserver/rpc/pb"
+	"github.com/cy77cc/hioshop_ms/app/fileserver/rpc/pb"
 
 	"github.com/zeromicro/go-zero/zrpc"
 	"google.golang.org/grpc"

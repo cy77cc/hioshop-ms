@@ -1,7 +1,7 @@
 package xcode
 
 // Xcode 定义响应码类型
-type Xcode int64
+type Xcode int
 
 // 成功类 (1000~1999)
 const (

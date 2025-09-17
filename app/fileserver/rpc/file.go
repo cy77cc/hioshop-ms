@@ -4,10 +4,10 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/cy77cc/hioshop_ms/application/fileserver/rpc/internal/config"
-	"github.com/cy77cc/hioshop_ms/application/fileserver/rpc/internal/server"
-	"github.com/cy77cc/hioshop_ms/application/fileserver/rpc/internal/svc"
-	"github.com/cy77cc/hioshop_ms/application/fileserver/rpc/pb"
+	"github.com/cy77cc/hioshop_ms/app/fileserver/rpc/internal/config"
+	"github.com/cy77cc/hioshop_ms/app/fileserver/rpc/internal/server"
+	"github.com/cy77cc/hioshop_ms/app/fileserver/rpc/internal/svc"
+	"github.com/cy77cc/hioshop_ms/app/fileserver/rpc/pb"
 
 	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/core/service"

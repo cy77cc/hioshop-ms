@@ -8,8 +8,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/cy77cc/hioshop_ms/application/fileserver/rpc/internal/svc"
-	"github.com/cy77cc/hioshop_ms/application/fileserver/rpc/pb"
+	"github.com/cy77cc/hioshop_ms/app/fileserver/rpc/internal/svc"
+	"github.com/cy77cc/hioshop_ms/app/fileserver/rpc/pb"
 	"github.com/minio/minio-go/v7"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

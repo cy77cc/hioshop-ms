@@ -4,9 +4,9 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/cy77cc/hioshop_ms/application/fileserver/api/internal/config"
-	"github.com/cy77cc/hioshop_ms/application/fileserver/api/internal/handler"
-	"github.com/cy77cc/hioshop_ms/application/fileserver/api/internal/svc"
+	"github.com/cy77cc/hioshop_ms/app/fileserver/api/internal/config"
+	"github.com/cy77cc/hioshop_ms/app/fileserver/api/internal/handler"
+	"github.com/cy77cc/hioshop_ms/app/fileserver/api/internal/svc"
 
 	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/rest"

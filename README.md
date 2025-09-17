@@ -1,6 +1,6 @@
 ## 项目结构
 ```shell
-├───application # 服务目录
+├───app # 服务目录
 │   └───fileserver
 │       ├───api
 │       ├───model
