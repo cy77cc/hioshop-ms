@@ -83,60 +83,114 @@ data:
     sync_binlog=1
     read_only= 1
 ---
-apiVersion: networking.istio.io/v1
+#apiVersion: networking.istio.io/v1
+#kind: Gateway
+#metadata:
+#  name: tcp-mysql-gateway
+#  namespace: mysql # IngressGateway 所在命名空间
+#spec:
+#  selector:
+#    istio: ingressgateway   # 绑定默认 Istio IngressGateway
+#  servers:
+#    - port:
+#        number: 33306        # 外部访问端口
+#        name: tcp-mysql-master       # 名称必须以 tcp- 开头
+#        protocol: TCP
+#      hosts:
+#        - "*"                   # 允许所有外部 IP
+#---
+## ===============================
+## DestinationRule: 定义 MySQL 服务
+## ===============================
+#apiVersion: networking.istio.io/v1
+#kind: DestinationRule
+#metadata:
+#  name: mysql-destination
+#  namespace: mysql        # MySQL 服务所在命名空间
+#spec:
+#  host: mysql-master.mysql.svc.cluster.local             # 集群内服务名
+#  trafficPolicy:
+#    # 可选：启用连接池或负载均衡策略
+#    loadBalancer:
+#      simple: ROUND_ROBIN
+#
+#---
+#
+## ===============================
+## VirtualService: TCP 路由 MySQL
+## ===============================
+#apiVersion: networking.istio.io/v1
+#kind: VirtualService
+#metadata:
+#  name: mysql-virtualservice
+#  namespace: mysql   # 与 Gateway 同一命名空间
+#spec:
+#  hosts:
+#    - "*"                     # 对应 Gateway hosts
+#  gateways:
+#    - tcp-mysql-gateway
+#  tcp:
+#    - match:
+#        - port: 33306           # 外部访问端口
+#      route:
+#        - destination:
+#            host: mysql-master.mysql.svc.cluster.local         # 集群内 MySQL 服务
+#            port:
+#              number: 3306
+apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
-  name: tcp-mysql-gateway
-  namespace: mysql # IngressGateway 所在命名空间
+  name: mysql-gateway
+  namespace: mysql
+  annotations:
+    networking.istio.io/service-type: NodePort
 spec:
-  selector:
-    istio: ingressgateway   # 绑定默认 Istio IngressGateway
-  servers:
-    - port:
-        number: 33306        # 外部访问端口
-        name: tcp-mysql-master       # 名称必须以 tcp- 开头
-        protocol: TCP
-      hosts:
-        - "*"                   # 允许所有外部 IP
----
-# ===============================
-# DestinationRule: 定义 MySQL 服务
-# ===============================
-apiVersion: networking.istio.io/v1
-kind: DestinationRule
-metadata:
-  name: mysql-destination
-  namespace: mysql        # MySQL 服务所在命名空间
-spec:
-  host: mysql-master.mysql.svc.cluster.local             # 集群内服务名
-  trafficPolicy:
-    # 可选：启用连接池或负载均衡策略
-    loadBalancer:
-      simple: ROUND_ROBIN
+  gatewayClassName: istio
+  listeners:
+    - name: tcp-mysql-master
+      protocol: TCP
+      port: 3306
+      allowedRoutes:
+        kinds:
+          - kind: TCPRoute
+    - name: tcp-mysql-slave
+      protocol: TCP
+      port: 3307
+      allowedRoutes:
+        kinds:
+          - kind: TCPRoute
+
 
 ---
-
-# ===============================
-# VirtualService: TCP 路由 MySQL
-# ===============================
-apiVersion: networking.istio.io/v1
-kind: VirtualService
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: TCPRoute
 metadata:
-  name: mysql-virtualservice
-  namespace: mysql   # 与 Gateway 同一命名空间
+  name: mysql-master
+  namespace: mysql
 spec:
-  hosts:
-    - "*"                     # 对应 Gateway hosts
-  gateways:
-    - tcp-mysql-gateway
-  tcp:
-    - match:
-        - port: 33306           # 外部访问端口
-      route:
-        - destination:
-            host: mysql-master.mysql.svc.cluster.local         # 集群内 MySQL 服务
-            port:
-              number: 3306
+  parentRefs:
+    - name: mysql-gateway
+      sectionName: tcp-mysql-master
+  rules:
+    - backendRefs:
+        - name: mysql-master
+          port: 3306
+          kind: Service
+---
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: TCPRoute
+metadata:
+  name: mysql-slave
+  namespace: mysql
+spec:
+  parentRefs:
+    - name: mysql-gateway
+      sectionName: tcp-mysql-slave
+  rules:
+    - backendRefs:
+        - name: mysql-slave
+          port: 3307
+          kind: Service
 ---
 apiVersion: v1
 kind: Service
