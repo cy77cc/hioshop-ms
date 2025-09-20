@@ -3,7 +3,7 @@ kind: Namespace
 metadata:
   name: minio
   labels:
-    istio-injection: enabled
+    istio.io/dataplane-mode: ambient
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -25,9 +25,11 @@ spec:
     - name: http-api
       protocol: TCP
       port: 9000
+      appProtocol: http
     - name: http-ui
       protocol: TCP
       port: 9001
+      appProtocol: http
   sessionAffinity: None
   selector:
     app: minio
@@ -44,9 +46,11 @@ spec:
     - name: http-api
       protocol: TCP
       port: 9000
+      appProtocol: http
     - name: http-ui
       protocol: TCP
       port: 9001
+      appProtocol: http
   selector:
     app: minio
 # ---
@@ -70,37 +74,14 @@ spec:
 #     app: minio
 ---
 apiVersion: gateway.networking.k8s.io/v1
-kind: Gateway
-metadata:
-  name: minio-gateway
-  namespace: minio
-  annotations:
-    networking.istio.io/service-type: NodePort
-spec:
-  gatewayClassName: istio
-  listeners:
-    - name: http-minio-api
-      protocol: HTTP
-      port: 9000
-      allowedRoutes:
-        namespaces:
-          from: Same
-    - name: http-minio-console
-      protocol: HTTP
-      port: 9001
-      allowedRoutes:
-        namespaces:
-          from: Same
-
----
-apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: minio-api
   namespace: minio
 spec:
   parentRefs:
-    - name: minio-gateway
+    - name: istio-gateway
+      namespace: istio-system
       kind: Gateway
       sectionName: http-minio-api
   rules:
@@ -110,6 +91,7 @@ spec:
             value: "/"  # 匹配所有 API 请求
       backendRefs:
         - name: minio
+          namespace: minio
           port: 9000
 ---
 apiVersion: gateway.networking.k8s.io/v1
@@ -119,8 +101,9 @@ metadata:
   namespace: minio
 spec:
   parentRefs:
-    - name: minio-gateway
+    - name: istio-gateway
       kind: Gateway
+      namespace: istio-system
       sectionName: http-minio-console
   rules:
     - matches:
@@ -129,6 +112,7 @@ spec:
             value: "/"   # 匹配 Console 根路径
       backendRefs:
         - name: minio
+          namespace: minio
           port: 9001
 ---
 apiVersion: apps/v1
@@ -147,6 +131,7 @@ spec:
     metadata:
       labels:
         app: minio
+        app.kubernetes.io/version: RELEASE.2025-09-07T16-13-09Z
     spec:
       containers:
         - name: minio
@@ -163,7 +148,7 @@ spec:
               readOnly: true
             - name: export
               mountPath: /export
-          args: [ "server", "http://minio-{0...2}.minio-hl/export", "--console-address", ":9001", "--address", ":9000" ]
+          args: [ "server", "http://minio-{0...2}.minio-hl:9000/export", "--console-address", ":9001", "--address", ":9000" ]
           livenessProbe:
             httpGet:
               path: /minio/health/live

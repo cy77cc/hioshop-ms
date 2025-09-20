@@ -1,0 +1,273 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: redis
+  labels:
+    istio.io/dataplane-mode: ambient
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-cm
+  namespace: redis
+data:
+  redis.conf: |
+    requirepass 1qaz@2wsX
+    bind 0.0.0.0
+    daemonize no
+    pidfile "/var/redis-server.pid"
+    port 6379
+    tcp-backlog 128
+    timeout 0
+    tcp-keepalive 0
+    loglevel notice
+    logfile "/var/redis-server.log"
+    databases 16
+    save 900 1
+    save 300 10
+    save 60 10000
+    stop-writes-on-bgsave-error yes
+    rdbcompression yes
+    rdbchecksum yes
+    dbfilename dump.rdb
+    dir "/data"
+    appendonly yes
+    appendfilename "appendonly.aof"
+    appendfsync everysec
+    no-appendfsync-on-rewrite no
+    auto-aof-rewrite-percentage 100
+    auto-aof-rewrite-min-size 64mb
+    aof-load-truncated yes
+    lua-time-limit 5000
+    slowlog-log-slower-than 10000
+    slowlog-max-len 128
+    latency-monitor-threshold 0
+    notify-keyspace-events ""
+    hash-max-ziplist-entries 512
+    hash-max-ziplist-value 64
+    list-max-ziplist-entries 512
+    list-max-ziplist-value 64
+    set-max-intset-entries 512
+    zset-max-ziplist-entries 128
+    zset-max-ziplist-value 64
+    hll-sparse-max-bytes 3000
+    activerehashing yes
+    client-output-buffer-limit normal 0 0 0
+    client-output-buffer-limit slave 256mb 64mb 60
+    client-output-buffer-limit pubsub 32mb 8mb 60
+    hz 10
+    aof-rewrite-incremental-fsync yes
+    cluster-enabled yes
+    cluster-config-file /var/nodes.conf
+    cluster-node-timeout 5000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-hl
+  namespace: redis
+  labels:
+    app: redis
+spec:
+  clusterIP: None
+  ports:
+    - name: tcp-redis
+      port: 6379
+      protocol: TCP
+      targetPort: 6379
+      appProtocol: redis
+  selector:
+    app: redis
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-0
+  namespace: redis
+spec:
+  ports:
+    - name: tcp-redis
+      port: 6379
+      protocol: TCP
+      targetPort: 6379
+      appProtocol: redis
+  selector:
+    app: redis
+    apps.kubernetes.io/pod-index: "0"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-1
+  namespace: redis
+spec:
+  ports:
+    - name: tcp-redis
+      port: 6380
+      protocol: TCP
+      targetPort: 6379
+      appProtocol: redis
+  selector:
+    app: redis
+    apps.kubernetes.io/pod-index: "1"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-2
+  namespace: redis
+spec:
+  ports:
+    - name: tcp-redis
+      port: 6381
+      protocol: TCP
+      targetPort: 6379
+      appProtocol: redis
+  selector:
+    app: redis
+    apps.kubernetes.io/pod-index: "2"
+---
+#apiVersion: v1
+#kind: Service
+#metadata:
+#  name: redis
+#  namespace: redis
+#  labels:
+#    app: redis
+#spec:
+#  type: NodePort
+#  ports:
+#    - name: tcp-redis
+#      port: 6379
+#      protocol: TCP
+#      targetPort: 6379
+#      nodePort: 6379
+#  selector:
+#    app: redis
+---
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: TCPRoute
+metadata:
+  name: redis
+  namespace: redis
+spec:
+  parentRefs:
+    - name: istio-gateway
+      kind: Gateway
+      namespace: istio-system
+      sectionName: tcp-redis-0
+    - name: istio-gateway
+      kind: Gateway
+      namespace: istio-system
+      sectionName: tcp-redis-1
+    - name: istio-gateway
+      kind: Gateway
+      namespace: istio-system
+      sectionName: tcp-redis-2
+  rules:
+    - backendRefs:
+        - name: redis-0
+          port: 6379
+          namespace: redis
+          kind: Service
+        - name: redis-1
+          port: 6380
+          namespace: redis
+          kind: Service
+        - name: redis-2
+          port: 6381
+          namespace: redis
+          kind: Service
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+  namespace: redis
+  labels:
+    app: redis
+spec:
+  selector:
+    matchLabels:
+      app: redis
+  replicas: 3
+  serviceName: redis-hl
+  template:
+    metadata:
+      labels:
+        app: redis
+        app.kubernetes.io/version: 7.4.2
+    spec:
+      containers:
+        - name: redis
+          image: redis:7.4.2
+          ports:
+            - containerPort: 6379
+              name: tcp-redis
+          command:
+            - redis-server
+            - /etc/redis/redis.conf
+          volumeMounts:
+            - mountPath: /etc/redis/redis.conf
+              name: redis-cm
+              subPath: redis.conf
+            - mountPath: /data
+              name: redis-data
+      volumes:
+        - name: redis-cm
+          configMap:
+            name: redis-cm
+        - name: redis-data
+          hostPath:
+            path: /data/redis/data
+            type: DirectoryOrCreate
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: redis
+                topologyKey: kubernetes.io/hostname
+              weight: 1
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: redis-cluster-setup
+  namespace: redis
+spec:
+  template:
+    spec:
+      containers:
+        - name: redis-cluster-setup
+          image: redis:7.4.2 # 使用合适的 Redis 版本
+          command:
+            - /bin/bash
+            - -c
+            - |
+              sleep 10
+              # 等待 Redis 节点初始化
+              echo "等待 Redis 节点启动..."
+              until redis-cli -h 192.168.66.150 -a 1qaz@2wsX -p 6379 --no-auth-warning ping | grep -q PONG; do
+                echo "等待 redis-node-1 启动..."
+                sleep 2
+              done
+              until redis-cli -h 192.168.66.150 -a 1qaz@2wsX -p 6380 --no-auth-warning ping | grep -q PONG; do
+                echo "等待 redis-node-2 启动..."
+                sleep 2
+              done
+              until redis-cli -h 192.168.66.150 -a 1qaz@2wsX -p 6381 --no-auth-warning ping | grep -q PONG; do
+                echo "等待 redis-node-3 启动..."
+                sleep 2
+              done
+
+              echo "所有节点已启动，开始创建集群..."
+
+              # 创建 Redis 集群
+              yes yes | redis-cli -h 192.168.66.150 -p 6379 -a 1qaz@2wsX --no-auth-warning --cluster create \
+                192.168.66.150:6379 192.168.66.150:6380 192.168.66.150:6381
+
+              echo "Redis 集群创建完成!"
+      restartPolicy: OnFailure
+  backoffLimit: 4
