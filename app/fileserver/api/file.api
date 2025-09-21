@@ -1,45 +1,46 @@
 syntax = "v1"
 
-info (
-	title:   "文件服务 API"
-	desc:    "支持分片上传（小文件 1 个分片，大文件多个分片）"
-	author:  "you"
-	version: "1.0"
+info(
+    title: "文件服务 API"
+    desc: "支持分片上传（小文件 1 个分片，大文件多个分片）"
+    author: "you"
+    version: "1.0"
 )
 
 type (
-	CreateUploadReq {
-		Bucket string `json:"bucket"`
-		Object string `json:"object"`
-	}
-	CreateUploadResp {
-		Bucket   string `json:"bucket"`
-		Key      string `json:"key"`
-		UploadID string `json:"uploadId"`
-	}
-	UploadPartReq {
-		UploadID   string `json:"uploadId"`
-		PartNumber uint64 `json:"partNumber"`
-		LastPart   bool   `json:"lastPart"`
-	}
-	UploadPartResp {
-		ETag       string `json:"eTag"`
-		PartNumber string `json:"partNumber"`
-	}
+    CreateUploadReq {
+        Bucket string `json:"bucket"`
+        Key string `json:"key"`
+        Hash string `json:"hash"`
+    }
+    CreateUploadResp {
+        Bucket string `json:"bucket"`
+        Key string `json:"key"`  // 文件名
+        UploadID string `json:"uploadId"`
+    }
+    UploadPartReq {
+        UploadID string `json:"uploadId"`
+        PartNumber uint64 `json:"partNumber"`
+        LastPart bool `json:"lastPart"`
+    }
+    UploadPartResp {
+        ETag string `json:"eTag"`
+        PartNumber string `json:"partNumber"`
+    }
 )
 
-@server (
-	jwt:    Auth
-	prefix: /file-server/v1
-	group:  s3
+@server(
+    jwt: Auth
+    prefix: /file-server/v1
+    group: s3
 )
 service file {
-	@doc "新建分段上传任务"
-	@handler CreateUpload
-	post /:bucket/:object (CreateUploadReq) returns (CreateUploadResp)
+    @doc "新建分段上传任务"
+    @handler CreateUpload
+    post /:bucket/:object (CreateUploadReq) returns (CreateUploadResp)
 
-	@doc "新建分段上传任务"
-	@handler UploadPart
-	put /:bucket/:object (UploadPartReq) returns (UploadPartResp)
+    @doc "新建分段上传任务"
+    @handler UploadPart
+    put /:bucket/:object (UploadPartReq) returns (UploadPartResp)
 }
 

@@ -100,7 +100,7 @@ data:
     done
     echo "${INITIAL_CONTROLLERS[*]}" | awk -v OFS=',' '{$1=$1}1' > /shared/initial-controllers.txt
     replace_in_file "$KAFKA_CONF_FILE" "client-address-placeholder" "${HOST_IP}:${POD_ID}9092"
-    replace_in_file "$KAFKA_CONF_FILE" "internal-address-placeholder" "${HOST_IP}"
+    replace_in_file "$KAFKA_CONF_FILE" "internal-address-placeholder" "${POD_IP}"
     sasl_env_vars=(
       KAFKA_CLIENT_PASSWORDS
       KAFKA_INTER_BROKER_PASSWORD
@@ -414,7 +414,11 @@ spec:
 #              valueFrom:
 #                fieldRef:
 #                  fieldPath: status.hostIP
-              value: "192.168.55.160"
+              value: "192.168.66.150"
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
             - name: KAFKA_CONTROLLER_0_DIR_ID
               valueFrom:
                 secretKeyRef:

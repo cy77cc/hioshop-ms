@@ -58,7 +58,15 @@ spec:
 #          - kind: TCPRoute
 #        namespaces:
 #          from: All
-    - name: tcp-kafka
+#    - name: tcp-kafka
+#      protocol: TCP
+#      port: 9092
+#      allowedRoutes:
+#        kinds:
+#          - kind: TCPRoute
+#        namespaces:
+#          from: All
+    - name: tcp-kafka-0
       protocol: TCP
       port: 9092
       allowedRoutes:
@@ -66,19 +74,19 @@ spec:
           - kind: TCPRoute
         namespaces:
           from: All
-#    - name: tcp-kafka-1
-#      protocol: TCP
-#      port: 19092
-#      allowedRoutes:
-#        kinds:
-#          - kind: TCPRoute
-#        namespaces:
-#          from: All
-#    - name: tcp-kafka-2
-#      protocol: TCP
-#      port: 29092
-#      allowedRoutes:
-#        kinds:
-#          - kind: TCPRoute
-#        namespaces:
-#          from: All
+    - name: tcp-kafka-1
+      protocol: TCP
+      port: 19092
+      allowedRoutes:
+        kinds:
+          - kind: TCPRoute
+        namespaces:
+          from: All
+    - name: tcp-kafka-2
+      protocol: TCP
+      port: 29092
+      allowedRoutes:
+        kinds:
+          - kind: TCPRoute
+        namespaces:
+          from: All
