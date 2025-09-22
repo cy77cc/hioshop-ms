@@ -10,7 +10,7 @@ message UploadReq {
   string hash = 3;
   bool is_last = 4; // 是不是最后一段
   string bucket = 6;
-  uint64 part_number = 7;
+  uint64 part_number = 7; // 0 是创建分片上传，1-10000 是上传分片
   uint64 uid = 8;
   string upload_id = 9;
   int64 file_size = 10;

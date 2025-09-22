@@ -2,9 +2,11 @@ package s3
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/cy77cc/hioshop_ms/app/fileserver/api/internal/svc"
 	"github.com/cy77cc/hioshop_ms/app/fileserver/api/internal/types"
+	"github.com/cy77cc/hioshop_ms/app/fileserver/rpc/pb"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -25,7 +27,22 @@ func NewCreateUploadLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Crea
 }
 
 func (l *CreateUploadLogic) CreateUpload(req *types.CreateUploadReq) (resp *types.CreateUploadResp, err error) {
-	// todo: add your logic here and delete this line
+	uid, _ := l.ctx.Value("uid").(json.Number).Int64()
+	uploadResp, err := l.svcCtx.FileRpc.Upload(l.ctx, &pb.UploadReq{
+		Bucket:     req.Bucket,
+		Uid:        uint64(uid),
+		Hash:       req.Hash,
+		IsLast:     false,
+		PartNumber: 0,
+		FileSize:   req.Size,
+		FileName:   req.Name,
+	})
+	if err != nil {
+		return nil, err
+	}
 
-	return
+	return &types.CreateUploadResp{
+		UploadID: uploadResp.UploadId,
+		ETag:     uploadResp.Etag,
+	}, nil
 }
