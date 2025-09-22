@@ -4,8 +4,8 @@ go 1.24.1
 
 require (
 	github.com/golang-jwt/jwt/v4 v4.5.2
-	github.com/google/uuid v1.6.0
 	github.com/minio/minio-go/v7 v7.0.95
+	github.com/samber/lo v1.51.0
 	github.com/zeromicro/go-zero v1.9.0
 	golang.org/x/crypto v0.39.0
 	google.golang.org/grpc v1.65.0
@@ -37,6 +37,7 @@ require (
 	github.com/google/gnostic-models v0.6.8 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/grafana/pyroscope-go v1.2.4 // indirect
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.8 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.20.0 // indirect

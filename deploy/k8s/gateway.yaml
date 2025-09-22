@@ -1,0 +1,92 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: istio-gateway
+  namespace: istio-system
+spec:
+  gatewayClassName: istio
+  listeners:
+    - name: http-minio-api
+      protocol: HTTP
+      port: 9000
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: http-minio-console
+      protocol: HTTP
+      port: 9001
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: tcp-mysql-master
+      protocol: TCP
+      port: 3306
+      allowedRoutes:
+        kinds:
+          - kind: TCPRoute
+        namespaces:
+          from: All
+    - name: tcp-mysql-slave
+      protocol: TCP
+      port: 3307
+      allowedRoutes:
+        kinds:
+          - kind: TCPRoute
+        namespaces:
+          from: All
+    - name: tcp-redis
+      protocol: TCP
+      port: 6379
+      allowedRoutes:
+        kinds:
+          - kind: TCPRoute
+        namespaces:
+          from: All
+#    - name: tcp-redis-1
+#      protocol: TCP
+#      port: 6380
+#      allowedRoutes:
+#        kinds:
+#          - kind: TCPRoute
+#        namespaces:
+#          from: All
+#    - name: tcp-redis-2
+#      protocol: TCP
+#      port: 6381
+#      allowedRoutes:
+#        kinds:
+#          - kind: TCPRoute
+#        namespaces:
+#          from: All
+#    - name: tcp-kafka
+#      protocol: TCP
+#      port: 9092
+#      allowedRoutes:
+#        kinds:
+#          - kind: TCPRoute
+#        namespaces:
+#          from: All
+    - name: tcp-kafka-0
+      protocol: TCP
+      port: 9092
+      allowedRoutes:
+        kinds:
+          - kind: TCPRoute
+        namespaces:
+          from: All
+    - name: tcp-kafka-1
+      protocol: TCP
+      port: 19092
+      allowedRoutes:
+        kinds:
+          - kind: TCPRoute
+        namespaces:
+          from: All
+    - name: tcp-kafka-2
+      protocol: TCP
+      port: 29092
+      allowedRoutes:
+        kinds:
+          - kind: TCPRoute
+        namespaces:
+          from: All

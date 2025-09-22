@@ -9,9 +9,11 @@ message UploadReq {
   bytes data = 2;
   string hash = 3;
   bool is_last = 4; // 是不是最后一段
-  uint64 uid = 5;
   string bucket = 6;
   uint64 part_number = 7;
+  uint64 uid = 8;
+  string upload_id = 9;
+  int64 file_size = 10;
 }
 
 message UploadResp {

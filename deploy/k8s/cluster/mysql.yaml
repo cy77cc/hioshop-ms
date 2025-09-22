@@ -3,7 +3,8 @@ kind: Namespace
 metadata:
   name: mysql
   labels:
-    istio-injection: enabled
+    istio.io/dataplane-mode: ambient
+
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -83,85 +84,6 @@ data:
     sync_binlog=1
     read_only= 1
 ---
-#apiVersion: networking.istio.io/v1
-#kind: Gateway
-#metadata:
-#  name: tcp-mysql-gateway
-#  namespace: mysql # IngressGateway 所在命名空间
-#spec:
-#  selector:
-#    istio: ingressgateway   # 绑定默认 Istio IngressGateway
-#  servers:
-#    - port:
-#        number: 33306        # 外部访问端口
-#        name: tcp-mysql-master       # 名称必须以 tcp- 开头
-#        protocol: TCP
-#      hosts:
-#        - "*"                   # 允许所有外部 IP
-#---
-## ===============================
-## DestinationRule: 定义 MySQL 服务
-## ===============================
-#apiVersion: networking.istio.io/v1
-#kind: DestinationRule
-#metadata:
-#  name: mysql-destination
-#  namespace: mysql        # MySQL 服务所在命名空间
-#spec:
-#  host: mysql-master.mysql.svc.cluster.local             # 集群内服务名
-#  trafficPolicy:
-#    # 可选：启用连接池或负载均衡策略
-#    loadBalancer:
-#      simple: ROUND_ROBIN
-#
-#---
-#
-## ===============================
-## VirtualService: TCP 路由 MySQL
-## ===============================
-#apiVersion: networking.istio.io/v1
-#kind: VirtualService
-#metadata:
-#  name: mysql-virtualservice
-#  namespace: mysql   # 与 Gateway 同一命名空间
-#spec:
-#  hosts:
-#    - "*"                     # 对应 Gateway hosts
-#  gateways:
-#    - tcp-mysql-gateway
-#  tcp:
-#    - match:
-#        - port: 33306           # 外部访问端口
-#      route:
-#        - destination:
-#            host: mysql-master.mysql.svc.cluster.local         # 集群内 MySQL 服务
-#            port:
-#              number: 3306
-apiVersion: gateway.networking.k8s.io/v1
-kind: Gateway
-metadata:
-  name: mysql-gateway
-  namespace: mysql
-  annotations:
-    networking.istio.io/service-type: NodePort
-spec:
-  gatewayClassName: istio
-  listeners:
-    - name: tcp-mysql-master
-      protocol: TCP
-      port: 3306
-      allowedRoutes:
-        kinds:
-          - kind: TCPRoute
-    - name: tcp-mysql-slave
-      protocol: TCP
-      port: 3307
-      allowedRoutes:
-        kinds:
-          - kind: TCPRoute
-
-
----
 apiVersion: gateway.networking.k8s.io/v1alpha2
 kind: TCPRoute
 metadata:
@@ -169,12 +91,15 @@ metadata:
   namespace: mysql
 spec:
   parentRefs:
-    - name: mysql-gateway
+    - name: istio-gateway
+      kind: Gateway
+      namespace: istio-system
       sectionName: tcp-mysql-master
   rules:
     - backendRefs:
         - name: mysql-master
           port: 3306
+          namespace: mysql
           kind: Service
 ---
 apiVersion: gateway.networking.k8s.io/v1alpha2
@@ -184,12 +109,15 @@ metadata:
   namespace: mysql
 spec:
   parentRefs:
-    - name: mysql-gateway
+    - name: istio-gateway
+      kind: Gateway
+      namespace: istio-system
       sectionName: tcp-mysql-slave
   rules:
     - backendRefs:
         - name: mysql-slave
           port: 3307
+          namespace: mysql
           kind: Service
 ---
 apiVersion: v1
@@ -203,6 +131,7 @@ spec:
       targetPort: 3306
       protocol: TCP
       name: tcp-mysql
+      appProtocol: mysql
   clusterIP: None
   selector:
     app: mysql-master
@@ -218,6 +147,7 @@ spec:
       protocol: TCP
       targetPort: 3307
       name: tcp-mysql
+      appProtocol: mysql
   clusterIP: None
   selector:
     app: mysql-slave
@@ -232,6 +162,7 @@ spec:
     - port: 3306
       targetPort: 3306
       name: tcp-mysql
+      appProtocol: mysql
   type: ClusterIP
   selector:
     app: mysql-master
@@ -246,6 +177,7 @@ spec:
     - port: 3307
       targetPort: 3307
       name: tcp-mysql
+      appProtocol: mysql
   type: ClusterIP
   selector:
     app: mysql-slave
@@ -265,6 +197,7 @@ spec:
     metadata:
       labels:
         app: mysql-master
+        app.kubernetes.io/version: 8.4.6
     spec:
       containers:
         - name: mysql-master
@@ -281,6 +214,8 @@ spec:
             - mountPath: /etc/mysql/my.cnf
               name: init
               subPath: my.cnf
+            - mountPath: /etc/localtime
+              name: time
           env:
             - name: MYSQL_ROOT_PASSWORD
               value: "1qaz@2wsX"
@@ -310,6 +245,9 @@ spec:
         - name: init
           configMap:
             name: mysql-cm
+        - name: time
+          hostPath:
+            path: /etc/localtime
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -331,10 +269,12 @@ spec:
     matchLabels:
       app: mysql-slave
   serviceName: mysql-slave-hl
+  podManagementPolicy: Parallel
   template:
     metadata:
       labels:
         app: mysql-slave
+        app.kubernetes.io/version: 8.4.6
     spec:
       initContainers:
         - name: init-conf
@@ -368,6 +308,8 @@ spec:
             - mountPath: /etc/mysql/my.cnf
               name: cnf
               subPath: my.cnf
+            - mountPath: /etc/localtime
+              name: time
           env:
             - name: MYSQL_ROOT_PASSWORD
               value: "1qaz@2wsX"
@@ -399,6 +341,10 @@ spec:
             name: mysql-cm
         - name: cnf
           emptyDir: { }
+        - name: time
+          hostPath:
+            path: /etc/localtime
+            type: File
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
