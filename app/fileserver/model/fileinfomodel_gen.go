@@ -9,7 +9,6 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/zeromicro/go-zero/core/stores/builder"
 	"github.com/zeromicro/go-zero/core/stores/cache"
@@ -43,19 +42,19 @@ type (
 	}
 
 	FileInfo struct {
-		Id          uint64    `db:"id"`           // 主键ID
-		FileId      string    `db:"file_id"`      // 文件唯一ID (UUID)
-		FileName    string    `db:"file_name"`    // 原始文件名
-		Bucket      string    `db:"bucket"`       // 存储桶
-		ObjectName  string    `db:"object_name"`  // 存储路径/对象名
-		Size        int64     `db:"size"`         // 文件大小（字节）
-		ContentType string    `db:"content_type"` // 文件类型（MIME）
-		Uploader    uint64    `db:"uploader"`     // 上传者用户ID
-		UploadTime  time.Time `db:"upload_time"`  // 上传时间
-		Hash        string    `db:"hash"`         // 文件哈希值
-		Description string    `db:"description"`  // 文件描述
-		DeletedTime time.Time `db:"deleted_time"` // 删除时间
-		Status      int64     `db:"status"`       // 状态（1=正常，0=已删除）
+		Id          uint64 `db:"id"`           // 主键ID
+		FileId      string `db:"file_id"`      // 文件唯一ID (UUID)
+		FileName    string `db:"file_name"`    // 原始文件名
+		Bucket      string `db:"bucket"`       // 存储桶
+		ObjectName  string `db:"object_name"`  // 存储路径/对象名
+		Size        int64  `db:"size"`         // 文件大小（字节）
+		ContentType string `db:"content_type"` // 文件类型（MIME）
+		Uploader    uint64 `db:"uploader"`     // 上传者用户ID
+		UploadTime  int64  `db:"upload_time"`  // 上传时间
+		Hash        string `db:"hash"`         // 文件哈希值
+		Description string `db:"description"`  // 文件描述
+		DeletedTime int64  `db:"deleted_time"` // 删除时间
+		Status      int64  `db:"status"`       // 状态（1=正常，0=已删除）
 	}
 )
 
