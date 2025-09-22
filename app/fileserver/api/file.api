@@ -9,11 +9,12 @@ info (
 
 type (
 	CreateUploadReq {
-		Bucket string `json:"bucket"`
-		Key    string `json:"key"`
-		Hash   string `json:"hash"`
-		Size   int64  `json:"size"`
-		Name   string `json:"name"`
+		Bucket      string `json:"bucket"`
+		Key         string `json:"key"`
+		Hash        string `json:"hash"`
+		Size        int64  `json:"size"`
+		Name        string `json:"name"`
+		ContentType string `json:"contentType"`
 	}
 	CreateUploadResp {
 		ETag     string `json:"eTag"`

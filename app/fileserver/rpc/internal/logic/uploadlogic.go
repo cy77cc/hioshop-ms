@@ -27,14 +27,21 @@ func NewUploadLogic(ctx context.Context, svcCtx *svc.ServiceContext) *UploadLogi
 	}
 }
 
+const (
+	FileStatusInit = iota
+	FileStatusUploading
+	FileStatusUploaded
+	FileStatusError
+)
+
 // 流式上传分片
 func (l *UploadLogic) Upload(in *pb.UploadReq) (*pb.UploadResp, error) {
-	object_name := getObjectName(in.Hash)
+	objectName := getObjectName(in.Hash)
 
 	// 0 表示是开始请求创建分片上传，在这里面应该判断
 	if in.PartNumber == 0 {
 		// 判断这个文件对象是否存在
-		stat, err := l.svcCtx.MinioClient.StatObject(l.ctx, in.Bucket, object_name, minio.StatObjectOptions{})
+		stat, err := l.svcCtx.MinioClient.StatObject(l.ctx, in.Bucket, objectName, minio.StatObjectOptions{})
 		resp := minio.ToErrorResponse(err)
 		if err != nil {
 			// 有报错，而且错误不是对象不存在
@@ -44,10 +51,24 @@ func (l *UploadLogic) Upload(in *pb.UploadReq) (*pb.UploadResp, error) {
 		}
 
 		if resp.Code == minio.NoSuchKey {
-			uploadID, err := l.svcCtx.MinioCore.NewMultipartUpload(l.ctx, in.Bucket, object_name, minio.PutObjectOptions{})
+			uploadID, err := l.svcCtx.MinioCore.NewMultipartUpload(l.ctx, in.Bucket, objectName, minio.PutObjectOptions{})
 			if err != nil {
 				return nil, err
 			}
+			s := l.svcCtx.UUID.String()
+
+			_, err = l.svcCtx.FileModel.Insert(l.ctx, &model.FileInfo{
+				Uploader:    in.Uid,
+				FileName:    in.FileName,
+				Size:        in.FileSize,
+				Hash:        in.Hash,
+				Bucket:      in.Bucket,
+				ObjectName:  objectName,
+				FileId:      s,
+				UploadTime:  time.Now().Unix(),
+				Status:      FileStatusInit,
+				ContentType: in.ContentType,
+			})
 			return &pb.UploadResp{
 				UploadId: uploadID,
 				Etag:     "",
@@ -62,13 +83,13 @@ func (l *UploadLogic) Upload(in *pb.UploadReq) (*pb.UploadResp, error) {
 
 	// 不是第一上传
 	reader := bytes.NewReader(in.Data)
-	part, err := l.svcCtx.MinioCore.PutObjectPart(l.ctx, in.Bucket, object_name, in.UploadId, int(in.PartNumber), reader, in.FileSize, minio.PutObjectPartOptions{})
+	part, err := l.svcCtx.MinioCore.PutObjectPart(l.ctx, in.Bucket, objectName, in.UploadId, int(in.PartNumber), reader, in.FileSize, minio.PutObjectPartOptions{})
 	if err != nil {
 		return nil, err
 	}
 
 	if in.IsLast {
-		listObjectParts, err := l.svcCtx.MinioCore.ListObjectParts(l.ctx, in.Bucket, object_name, in.UploadId, 0, int(in.PartNumber))
+		listObjectParts, err := l.svcCtx.MinioCore.ListObjectParts(l.ctx, in.Bucket, objectName, in.UploadId, 0, int(in.PartNumber))
 		if err != nil {
 			return nil, err
 		}
@@ -82,26 +103,11 @@ func (l *UploadLogic) Upload(in *pb.UploadReq) (*pb.UploadResp, error) {
 			completePart[i].ChecksumSHA256 = v.ChecksumSHA256
 		}
 
-		s := l.svcCtx.UUID.String()
-
-		_, err = l.svcCtx.FileModel.Insert(l.ctx, &model.FileInfo{
-			Uploader:    in.Uid,
-			FileName:    in.FileName,
-			Size:        in.FileSize,
-			Hash:        in.Hash,
-			Bucket:      in.Bucket,
-			ObjectName:  object_name,
-			FileId:      s,
-			UploadTime:  time.Now().Unix(),
-			Status:      1,
-			ContentType: in.ContentType,
-		})
-
 		if err != nil {
 			return nil, fmt.Errorf("insert file info error: %v", err)
 		}
 
-		completeMultipartUpload, err := l.svcCtx.MinioCore.CompleteMultipartUpload(l.ctx, in.Bucket, object_name, in.UploadId, completePart, minio.PutObjectOptions{})
+		completeMultipartUpload, err := l.svcCtx.MinioCore.CompleteMultipartUpload(l.ctx, in.Bucket, objectName, in.UploadId, completePart, minio.PutObjectOptions{})
 		if err != nil {
 			return nil, err
 		}

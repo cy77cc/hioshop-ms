@@ -4,11 +4,12 @@
 package types
 
 type CreateUploadReq struct {
-	Bucket string `json:"bucket"`
-	Key    string `json:"key"`
-	Hash   string `json:"hash"`
-	Size   int64  `json:"size"`
-	Name   string `json:"name"`
+	Bucket      string `json:"bucket"`
+	Key         string `json:"key"`
+	Hash        string `json:"hash"`
+	Size        int64  `json:"size"`
+	Name        string `json:"name"`
+	ContentType string `json:"contentType"`
 }
 
 type CreateUploadResp struct {

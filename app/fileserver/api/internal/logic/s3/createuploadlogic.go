@@ -29,13 +29,14 @@ func NewCreateUploadLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Crea
 func (l *CreateUploadLogic) CreateUpload(req *types.CreateUploadReq) (resp *types.CreateUploadResp, err error) {
 	uid, _ := l.ctx.Value("uid").(json.Number).Int64()
 	uploadResp, err := l.svcCtx.FileRpc.Upload(l.ctx, &pb.UploadReq{
-		Bucket:     req.Bucket,
-		Uid:        uint64(uid),
-		Hash:       req.Hash,
-		IsLast:     false,
-		PartNumber: 0,
-		FileSize:   req.Size,
-		FileName:   req.Name,
+		Bucket:      req.Bucket,
+		Uid:         uint64(uid),
+		Hash:        req.Hash,
+		IsLast:      false,
+		PartNumber:  0,
+		FileSize:    req.Size,
+		FileName:    req.Name,
+		ContentType: req.ContentType,
 	})
 	if err != nil {
 		return nil, err
