@@ -5,7 +5,6 @@ go 1.24.1
 require (
 	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/minio/minio-go/v7 v7.0.95
-	github.com/samber/lo v1.51.0
 	github.com/zeromicro/go-zero v1.9.0
 	golang.org/x/crypto v0.39.0
 	google.golang.org/grpc v1.65.0

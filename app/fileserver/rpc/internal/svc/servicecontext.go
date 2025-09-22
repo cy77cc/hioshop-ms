@@ -3,6 +3,7 @@ package svc
 import (
 	"github.com/cy77cc/hioshop_ms/app/fileserver/model"
 	"github.com/cy77cc/hioshop_ms/app/fileserver/rpc/internal/config"
+	"github.com/google/uuid"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
@@ -13,6 +14,7 @@ type ServiceContext struct {
 	FileModel   model.FileInfoModel
 	MinioCore   *minio.Core
 	MinioClient *minio.Client
+	UUID        uuid.UUID
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
@@ -30,5 +32,6 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		FileModel:   model.NewFileInfoModel(conn, c.CacheConf),
 		MinioCore:   core,
 		MinioClient: client,
+		UUID:        uuid.New(),
 	}
 }

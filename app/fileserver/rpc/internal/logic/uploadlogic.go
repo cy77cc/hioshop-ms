@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"time"
+
+	"github.com/cy77cc/hioshop_ms/app/fileserver/model"
 	"github.com/cy77cc/hioshop_ms/app/fileserver/rpc/internal/svc"
 	"github.com/cy77cc/hioshop_ms/app/fileserver/rpc/pb"
 	"github.com/minio/minio-go/v7"
@@ -77,6 +80,25 @@ func (l *UploadLogic) Upload(in *pb.UploadReq) (*pb.UploadResp, error) {
 			completePart[i].ETag = v.ETag
 			completePart[i].ChecksumCRC32 = v.ChecksumCRC32
 			completePart[i].ChecksumSHA256 = v.ChecksumSHA256
+		}
+
+		s := l.svcCtx.UUID.String()
+
+		_, err = l.svcCtx.FileModel.Insert(l.ctx, &model.FileInfo{
+			Uploader:    in.Uid,
+			FileName:    in.FileName,
+			Size:        in.FileSize,
+			Hash:        in.Hash,
+			Bucket:      in.Bucket,
+			ObjectName:  object_name,
+			FileId:      s,
+			UploadTime:  time.Now().Unix(),
+			Status:      1,
+			ContentType: in.ContentType,
+		})
+
+		if err != nil {
+			return nil, fmt.Errorf("insert file info error: %v", err)
 		}
 
 		completeMultipartUpload, err := l.svcCtx.MinioCore.CompleteMultipartUpload(l.ctx, in.Bucket, object_name, in.UploadId, completePart, minio.PutObjectOptions{})
