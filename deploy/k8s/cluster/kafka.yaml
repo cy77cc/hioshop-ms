@@ -47,7 +47,6 @@ data:
       user_user1="1qaz@2wsX";
     };
 ---
-# Source: kafka/templates/controller-eligible/svc-headless.yaml
 apiVersion: v1
 kind: Service
 metadata:
@@ -60,20 +59,45 @@ spec:
   clusterIP: None
   publishNotReadyAddresses: true
   ports:
-    - name: tcp-interbroker
-      port: 9094
-      protocol: TCP
-      targetPort: interbroker
     - name: tcp-client
       port: 9092
       protocol: TCP
       targetPort: client
+      appProtocol: kafka
     - name: tcp-controller
       protocol: TCP
       port: 9093
       targetPort: controller
+      appProtocol: kafka
   selector:
     app: kafka
+    app.kubernetes.io/version: 4.1.0
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka
+  namespace: kafka
+  labels:
+    app: kafka
+spec:
+  type: NodePort
+  ports:
+    - name: tcp-client
+      port: 9092
+      protocol: TCP
+      nodePort: 9092
+      appProtocol: kafka
+    - name: tcp-interbroker
+      port: 9093
+      protocol: TCP
+      nodePort: 9093
+      appProtocol: kafka
+  selector:
+    app: kafka
+    app.kubernetes.io/version: 4.1.0
+  internalTrafficPolicy: Local
+  externalTrafficPolicy: Local
 ---
 apiVersion: gateway.networking.k8s.io/v1alpha2
 kind: TCPRoute
@@ -93,30 +117,6 @@ spec:
           namespace: kafka
           kind: Service
 ---
-apiVersion: v1
-kind: Service
-metadata:
-  name: kafka
-  namespace: kafka
-  labels:
-    app: kafka
-spec:
-  type: NodePort
-  ports:
-    - name: tcp-client
-      port: 9092
-      protocol: TCP
-      nodePort: 9092
-    - name: tcp-interbroker
-      port: 9093
-      protocol: TCP
-      nodePort: 9093
-  selector:
-    app: kafka
-  internalTrafficPolicy: Local
-  externalTrafficPolicy: Local
----
----
 # Source: kafka/templates/controller-eligible/statefulset.yaml
 apiVersion: apps/v1
 kind: StatefulSet
@@ -131,15 +131,17 @@ spec:
   selector:
     matchLabels:
       app: kafka
+      app.kubernetes.io/version: 4.1.0
   serviceName: kafka-hl
   template:
     metadata:
       labels:
         app: kafka
+        app.kubernetes.io/version: 4.1.0
     spec:
       containers:
         - name: kafka
-          image: apache/kafka:4.0.1
+          image: apache/kafka:4.1.0
           imagePullPolicy: "IfNotPresent"
           command:
             - sh
