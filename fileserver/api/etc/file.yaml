@@ -1,0 +1,10 @@
+Name: file
+Host: 0.0.0.0
+Port: 39000
+
+
+FileRpc:
+  Etcd:
+    Hosts:
+      - 127.0.0.1:2379
+    Key: file.rpc
