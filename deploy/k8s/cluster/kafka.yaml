@@ -175,8 +175,6 @@ spec:
               containerPort: 9093
             - name: client
               containerPort: 9092
-            - name: interbroker
-              containerPort: 9094
           startupProbe:
             failureThreshold: 3
             initialDelaySeconds: 30
