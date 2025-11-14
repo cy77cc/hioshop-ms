@@ -42,22 +42,22 @@ spec:
           - kind: TCPRoute
         namespaces:
           from: All
-#    - name: tcp-redis-1
-#      protocol: TCP
-#      port: 6380
-#      allowedRoutes:
-#        kinds:
-#          - kind: TCPRoute
-#        namespaces:
-#          from: All
-#    - name: tcp-redis-2
-#      protocol: TCP
-#      port: 6381
-#      allowedRoutes:
-#        kinds:
-#          - kind: TCPRoute
-#        namespaces:
-#          from: All
+    #    - name: tcp-redis-1
+    #      protocol: TCP
+    #      port: 6380
+    #      allowedRoutes:
+    #        kinds:
+    #          - kind: TCPRoute
+    #        namespaces:
+    #          from: All
+    #    - name: tcp-redis-2
+    #      protocol: TCP
+    #      port: 6381
+    #      allowedRoutes:
+    #        kinds:
+    #          - kind: TCPRoute
+    #        namespaces:
+    #          from: All
     - name: tcp-kafka
       protocol: TCP
       port: 9092

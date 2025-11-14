@@ -9,7 +9,6 @@ import (
 	"github.com/cy77cc/hioshop/common/model"
 	"github.com/cy77cc/hioshop/fileserver/rpc/internal/svc"
 	"github.com/cy77cc/hioshop/fileserver/rpc/pb"
-	"github.com/minio/minio-go/v7"
 	"github.com/zeromicro/go-zero/core/logx"
 )
 

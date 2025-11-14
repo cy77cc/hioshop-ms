@@ -4,7 +4,6 @@ import (
 	"github.com/cy77cc/hioshop/common/model"
 	"github.com/cy77cc/hioshop/fileserver/rpc/internal/config"
 	"github.com/google/uuid"
-	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
