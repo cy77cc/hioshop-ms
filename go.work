@@ -1,3 +1,6 @@
-go 1.25
+go 1.25.1
 
-use common
+use (
+	./common
+	./fileserver
+)

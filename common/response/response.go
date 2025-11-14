@@ -1,8 +1,8 @@
 package response
 
 import (
-	"github.com/cy77cc/hioshop_ms/common/utils"
-	"github.com/cy77cc/hioshop_ms/common/xcode"
+	"github.com/cy77cc/hioshop/common/utils"
+	"github.com/cy77cc/hioshop/common/xcode"
 )
 
 // 定义统一的响应结构体
